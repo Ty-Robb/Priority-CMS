@@ -52,6 +52,9 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
   const [isQuoteEditOpen, setIsQuoteEditOpen] = useState(false);
   const [currentQuoteProps, setCurrentQuoteProps] = useState<Partial<QuoteBlockProps>>({});
 
+  const [isListEditOpen, setIsListEditOpen] = useState(false);
+  const [currentListProps, setCurrentListProps] = useState<Partial<ListBlockProps>>({ items: [], ordered: false });
+
 
   const {
     attributes,
@@ -179,6 +182,42 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
   const handleSaveQuoteProps = () => {
     onUpdateBlock(block.id, currentQuoteProps);
     setIsQuoteEditOpen(false);
+  };
+
+  const handleOpenListEditDialog = () => {
+    if (block.type === 'list') {
+      const props = block.props as ListBlockProps;
+      // Deep copy items to avoid direct state mutation
+      setCurrentListProps({ 
+        items: props.items.map(item => ({ ...item })), 
+        ordered: props.ordered 
+      });
+      setIsListEditOpen(true);
+    }
+  };
+
+  const handleListItemTextChange = (itemId: string, newText: string) => {
+    setCurrentListProps(prev => {
+      if (!prev || !prev.items) return prev; // Should not happen if dialog is open
+      return {
+        ...prev,
+        items: prev.items.map(item => 
+          item.id === itemId ? { ...item, text: newText } : item
+        ),
+      };
+    });
+  };
+
+  const handleListOrderedChange = (ordered: string) => { // Radix Select returns string value
+    setCurrentListProps(prev => ({
+      ...prev,
+      ordered: ordered === 'true',
+    }));
+  };
+  
+  const handleSaveListProps = () => {
+    onUpdateBlock(block.id, currentListProps);
+    setIsListEditOpen(false);
   };
 
 
@@ -320,7 +359,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
           >
             <GripVertical size={16} />
           </Button>
-          {(block.type === 'image' || block.type === 'button' || block.type === 'quote') && (
+          {(block.type === 'image' || block.type === 'button' || block.type === 'quote' || block.type === 'list') && (
             <Button
               variant="ghost"
               size="icon"
@@ -330,6 +369,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
                 block.type === 'image' ? handleOpenImageEditDialog :
                 block.type === 'button' ? handleOpenButtonEditDialog :
                 block.type === 'quote' ? handleOpenQuoteEditDialog :
+                block.type === 'list' ? handleOpenListEditDialog :
                 undefined
               }
             >
@@ -562,7 +602,67 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
           </DialogContent>
         </Dialog>
       )}
+
+      {block.type === 'list' && (
+         <Dialog open={isListEditOpen} onOpenChange={setIsListEditOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit List Properties</DialogTitle>
+              <DialogDescription>
+                Modify the list items and type.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="list-type" className="text-right">
+                  List Type
+                </Label>
+                <Select
+                  value={currentListProps.ordered ? 'true' : 'false'}
+                  onValueChange={handleListOrderedChange}
+                >
+                  <SelectTrigger id="list-type" className="col-span-3">
+                    <SelectValue placeholder="Select list type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="false">Unordered (bullet points)</SelectItem>
+                    <SelectItem value="true">Ordered (numbered)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Label className="col-span-4 mt-2">List Items:</Label>
+              {currentListProps.items?.map((item, index) => (
+                <div key={item.id} className="grid grid-cols-4 items-center gap-x-4 gap-y-1 col-span-4">
+                   <Label htmlFor={`list-item-${item.id}`} className="text-right sr-only">
+                     Item {index + 1}
+                  </Label>
+                  <Input
+                    id={`list-item-${item.id}`}
+                    value={item.text}
+                    onChange={(e) => handleListItemTextChange(item.id, e.target.value)}
+                    className="col-span-4" 
+                    placeholder={`Item ${index + 1} text`}
+                  />
+                  {/* Placeholder for delete item button if added later */}
+                </div>
+              ))}
+              {/* Placeholder for add new item button if added later */}
+
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="button" onClick={handleSaveListProps}>
+                Update List
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
-
