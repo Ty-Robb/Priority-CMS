@@ -8,67 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Image from 'next/image';
-
-// Temporary mock data source, mirroring structure from ContentManagementPage
-// In a real app, this would be fetched from a backend/database
-const mockContentData: ContentPiece[] = [
-    {
-    id: "1",
-    title: "The Future of AI in Content Creation",
-    status: "Published",
-    contentType: "Blog Post",
-    keywords: ["AI", "content", "future"],
-    generatedHeadlines: ["AI: Revolutionizing Content", "The Next Wave of Content with AI"],
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(), 
-    updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(), 
-    body: "Artificial Intelligence (AI) is rapidly transforming the landscape of content creation. From automated journalism to AI-powered copywriting tools, the possibilities seem endless.\n\nOne of the most significant impacts of AI is its ability to analyze vast amounts of data and identify trends, which can then be used to generate highly relevant and engaging content. This can save content creators significant time and resources.\n\nFurthermore, AI tools can assist with tasks such as grammar checking, style improvement, and even generating entire articles from a set of keywords or a brief outline. While the human touch remains crucial for creativity and nuance, AI serves as a powerful assistant, augmenting human capabilities rather than replacing them entirely.\n\nThe ethical implications of AI in content creation, such as concerns about plagiarism and the spread of misinformation, also need careful consideration as the technology continues to evolve. However, with responsible development and deployment, AI promises a future where content is more personalized, data-driven, and accessible than ever before.",
-  },
-  {
-    id: "2",
-    title: "Top 10 React Best Practices",
-    status: "Draft",
-    contentType: "Technical Article",
-    keywords: ["React", "best practices", "development"],
-    generatedHeadlines: [],
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), 
-    updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(), 
-    body: "This is the body of the React best practices article...",
-  },
-   {
-    id: "3",
-    title: "About Us - Our Company Story",
-    status: "Published",
-    contentType: "Page",
-    keywords: ["company", "about", "mission"],
-    generatedHeadlines: [],
-    createdAt: new Date(Date.now() - 86400000 * 10).toISOString(), 
-    updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(), 
-    body: "This is the body of the About Us page...",
-  },
-   {
-    id: "4",
-    title: "Understanding Server Components - A Deep Dive",
-    status: "Archived",
-    contentType: "Blog Post",
-    keywords: ["Server Components", "React", "Next.js"],
-    generatedHeadlines: [],
-    createdAt: new Date(Date.now() - 86400000 * 20).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 15).toISOString(),
-    body: "This is the body of the Server Components article...",
-  },
-   {
-    id: "5",
-    title: "Project Alpha Showcase",
-    status: "Published",
-    contentType: "Portfolio Item",
-    keywords: ["case study", "project", "design"],
-    generatedHeadlines: [],
-    createdAt: new Date(Date.now() - 86400000 * 12).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 4).toISOString(),
-    body: "Detailed description of Project Alpha...",
-  },
-];
-
+import { mockContentData } from '@/lib/mock-data'; // Import centralized mock data
 
 export default function BlogPostPage() {
   const params = useParams();
@@ -180,5 +120,3 @@ export default function BlogPostPage() {
     </div>
   );
 }
-
-    

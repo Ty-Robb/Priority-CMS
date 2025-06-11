@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -13,26 +13,53 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateHeadlineOptions } from "@/ai/flows/generate-headline-options";
 import { suggestRelevantKeywords } from "@/ai/flows/suggest-relevant-keywords";
-import { Sparkles, Tags, CheckCircle, Loader2 } from "lucide-react";
+import { Sparkles, Tags, CheckCircle, Loader2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import type { ContentPiece } from "@/types";
 
 const contentFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   body: z.string().min(10, "Content body must be at least 10 characters"),
+  // contentType and status might be handled separately or added here later
 });
 
 type ContentFormData = z.infer<typeof contentFormSchema>;
 
-export function ContentForm() {
+interface ContentFormProps {
+  initialContent?: ContentPiece;
+}
+
+export function ContentForm({ initialContent }: ContentFormProps) {
   const [generatedHeadlines, setGeneratedHeadlines] = useState<string[]>([]);
   const [suggestedKeywords, setSuggestedKeywords] = useState<string[]>([]);
   const [isGeneratingHeadlines, setIsGeneratingHeadlines] = useState(false);
   const [isSuggestingKeywords, setIsSuggestingKeywords] = useState(false);
   const { toast } = useToast();
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<ContentFormData>({
+  const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<ContentFormData>({
     resolver: zodResolver(contentFormSchema),
+    defaultValues: {
+      title: initialContent?.title || "",
+      body: initialContent?.body || "",
+    }
   });
+
+  useEffect(() => {
+    if (initialContent) {
+      reset({
+        title: initialContent.title,
+        body: initialContent.body,
+      });
+      // For now, clear AI suggestions when loading existing content.
+      // A more advanced implementation might load existing keywords/headlines if they were saved.
+      setGeneratedHeadlines([]); 
+      setSuggestedKeywords([]);
+    } else {
+      reset({ title: "", body: "" }); // Reset form if navigating from edit to new
+      setGeneratedHeadlines([]);
+      setSuggestedKeywords([]);
+    }
+  }, [initialContent, reset]);
 
   const contentBody = watch("body");
 
@@ -73,10 +100,19 @@ export function ContentForm() {
   };
 
   const onSubmit: SubmitHandler<ContentFormData> = (data) => {
-    console.log("Content submitted:", { ...data, generatedHeadlines, suggestedKeywords });
-    // Placeholder for actual save logic
-    toast({ title: "Content Saved!", description: "Your masterpiece is safe.", icon: <CheckCircle className="h-5 w-5 text-green-500" /> });
+    if (initialContent) {
+      console.log("Content updated:", { id: initialContent.id, ...data, generatedHeadlines, suggestedKeywords });
+      toast({ title: "Content Updated!", description: "Your changes have been saved.", icon: <CheckCircle className="h-5 w-5 text-green-500" /> });
+      // Here you would typically call an API to update the content in your backend/database
+    } else {
+      console.log("Content submitted:", { ...data, generatedHeadlines, suggestedKeywords });
+      toast({ title: "Content Saved!", description: "Your masterpiece is safe.", icon: <CheckCircle className="h-5 w-5 text-green-500" /> });
+      // Here you would typically call an API to save the new content
+    }
+    // Potentially redirect or clear form after save/update
   };
+  
+  const submitButtonText = initialContent ? "Update Content" : "Save Content";
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -89,8 +125,12 @@ export function ContentForm() {
         <TabsContent value="editor">
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline text-2xl">Create New Content</CardTitle>
-              <CardDescription>Craft and refine your content using the form editor. Use AI tools to enhance your work.</CardDescription>
+              <CardTitle className="font-headline text-2xl">
+                {initialContent ? "Edit Content Details" : "Create New Content"}
+              </CardTitle>
+              <CardDescription>
+                {initialContent ? "Modify the details of your existing content." : "Craft and refine your content using the form editor. Use AI tools to enhance your work."}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -138,7 +178,7 @@ export function ContentForm() {
             </CardContent>
             <CardFooter>
               <Button type="submit" size="lg">
-                Save Content
+                <Save className="mr-2 h-4 w-4" /> {submitButtonText}
               </Button>
             </CardFooter>
           </Card>
