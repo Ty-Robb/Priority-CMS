@@ -7,17 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Paperclip, Send, User, Bot } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { ChatMessage, PageStructure, VisualBlock } from '@/types'; // Added PageStructure
+import type { ChatMessage, PageStructure, VisualBlock } from '@/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-// Ensure the path is correct for your project structure
 import { generatePageContent, type GeneratePageContentOutput } from '@/ai/flows/generate-page-content'; 
+import { addTextBlockToPage, type AddTextBlockToPageOutput } from '@/ai/flows/add-text-block-to-page-flow';
 
 interface ChatInterfaceProps {
   setCurrentPageStructure: Dispatch<SetStateAction<PageStructure | null>>;
+  currentPageStructure: PageStructure | null; // Added to read current state
 }
 
-export function ChatInterface({ setCurrentPageStructure }: ChatInterfaceProps) {
+export function ChatInterface({ setCurrentPageStructure, currentPageStructure }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -48,22 +49,48 @@ export function ChatInterface({ setCurrentPageStructure }: ChatInterfaceProps) {
     const createPageKeywords = ['create a page', 'generate a page', 'make a webpage', 'design a page about', 'draft a page for'];
     const isCreatePageRequest = createPageKeywords.some(keyword => currentInput.toLowerCase().includes(keyword));
 
+    const addParagraphKeywords = [
+        "add paragraph saying ", 
+        "add a paragraph: ", 
+        "append paragraph: ", 
+        "new paragraph: ", 
+        "add text: "
+    ];
+    let isAddParagraphRequest = false;
+    let paragraphTextContent = "";
+
+    for (const keyword of addParagraphKeywords) {
+        if (currentInput.toLowerCase().startsWith(keyword.toLowerCase())) {
+            isAddParagraphRequest = true;
+            paragraphTextContent = currentInput.substring(keyword.length).trim();
+            // Remove quotes if text is wrapped in them
+            if ((paragraphTextContent.startsWith('"') && paragraphTextContent.endsWith('"')) ||
+                (paragraphTextContent.startsWith("'") && paragraphTextContent.endsWith("'"))) {
+                paragraphTextContent = paragraphTextContent.substring(1, paragraphTextContent.length - 1);
+            }
+            break;
+        }
+    }
+
+
     if (isCreatePageRequest) {
       try {
         const aiResponse: GeneratePageContentOutput = await generatePageContent({ prompt: currentInput });
 
         const newBlocks: VisualBlock[] = [];
         aiResponse.sections.forEach((section, index) => {
+          const titleId = `block-title-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 7)}`;
+          const contentId = `block-content-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 7)}`;
           if (section.sectionTitle) {
             newBlocks.push({
-              id: `block-title-${Date.now()}-${index}`,
+              id: titleId,
               type: 'text',
               props: { text: section.sectionTitle, level: 'h2' },
             });
           }
           if (section.sectionContent) {
             newBlocks.push({
-              id: `block-content-${Date.now()}-${index}`,
+              id: contentId,
               type: 'text',
               props: { text: section.sectionContent, level: 'p' },
             });
@@ -94,15 +121,62 @@ export function ChatInterface({ setCurrentPageStructure }: ChatInterfaceProps) {
           timestamp: new Date().toISOString(),
         };
         setMessages((prevMessages) => [...prevMessages, errorMessage]);
-        // Optionally clear canvas on error, or leave it as is
-        // setCurrentPageStructure(null); 
       }
-    } else {
+    } else if (isAddParagraphRequest) {
+        if (!currentPageStructure) {
+            toast({
+                title: "No Page Loaded",
+                description: "Please create or generate a page before adding content to it.",
+                variant: "destructive",
+            });
+            const noPageMessage: ChatMessage = {
+                id: (Date.now() + 1).toString(),
+                text: "I can't add a paragraph because no page is currently loaded on the canvas. Try 'Create a page about...' first.",
+                sender: 'ai',
+                timestamp: new Date().toISOString(),
+            };
+            setMessages((prevMessages) => [...prevMessages, noPageMessage]);
+        } else if (!paragraphTextContent) {
+             const noTextMessage: ChatMessage = {
+                id: (Date.now() + 1).toString(),
+                text: "What text would you like to add for the paragraph?",
+                sender: 'ai',
+                timestamp: new Date().toISOString(),
+            };
+            setMessages((prevMessages) => [...prevMessages, noTextMessage]);
+        }
+        else {
+            try {
+                const result: AddTextBlockToPageOutput = await addTextBlockToPage({
+                    currentPageStructure: currentPageStructure,
+                    paragraphText: paragraphTextContent,
+                });
+                setCurrentPageStructure(result.updatedPageStructure);
+                const aiConfirmationMessage: ChatMessage = {
+                    id: (Date.now() + 1).toString(),
+                    text: "Okay, I've added the paragraph to the page.",
+                    sender: 'ai',
+                    timestamp: new Date().toISOString(),
+                };
+                setMessages((prevMessages) => [...prevMessages, aiConfirmationMessage]);
+            } catch (error) {
+                console.error("Error adding text block:", error);
+                const errorMessage: ChatMessage = {
+                    id: (Date.now() + 1).toString(),
+                    text: "Sorry, I encountered an issue adding that paragraph. Please try again.",
+                    sender: 'ai',
+                    timestamp: new Date().toISOString(),
+                };
+                setMessages((prevMessages) => [...prevMessages, errorMessage]);
+            }
+        }
+    }
+    else {
       // Simulate standard AI response for other queries
       await new Promise(resolve => setTimeout(resolve, 1000));
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: "I'm processing your request. How can I help further with your content or document analysis? If you'd like to generate a page, try 'Create a page about...'.",
+        text: "I'm processing your request. How can I help further with your content? You can ask me to 'create a page about...' or, if a page is loaded, 'add paragraph saying ...'.",
         sender: 'ai',
         timestamp: new Date().toISOString(),
       };
@@ -164,7 +238,7 @@ export function ChatInterface({ setCurrentPageStructure }: ChatInterfaceProps) {
          {messages.length === 0 && (
           <div className="text-center text-muted-foreground p-8">
             <Bot size={48} className="mx-auto mb-2" />
-            <p>Ask me to generate page content (e.g., "Create a page about a new coffee shop") or upload a document to get started!</p>
+            <p>Ask me to generate page content (e.g., "Create a page about a new coffee shop") or try adding a paragraph to an existing page (e.g., "Add paragraph saying Hello World").</p>
           </div>
         )}
       </ScrollArea>
@@ -196,4 +270,3 @@ export function ChatInterface({ setCurrentPageStructure }: ChatInterfaceProps) {
     </div>
   );
 }
-

@@ -75,11 +75,11 @@ const initialMockPageStructureForEditing: PageStructure = {
 
 function ContentStudioInner() {
   const searchParams = useSearchParams();
-  const [editorMode, setEditorMode] = useState<'form' | 'chat'>('form');
+  const [editorMode, setEditorMode] = useState<'form' | 'chat'>('form'); // Default to 'form'
   const [initialContent, setInitialContent] = useState<ContentPiece | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(true);
   const [pageTitle, setPageTitle] = useState("Content Studio");
-  const [currentPageStructure, setCurrentPageStructure] = useState<PageStructure | null>(null); // Initialize to null
+  const [currentPageStructure, setCurrentPageStructure] = useState<PageStructure | null>(null);
 
   const editId = searchParams.get('editId');
 
@@ -90,22 +90,20 @@ function ContentStudioInner() {
       const contentToEdit = mockContentData.find(content => content.id === editId);
       if (contentToEdit) {
         setInitialContent(contentToEdit);
-        // For editing, we use the mock structure.
-        // In a real app, you'd load the actual saved visual structure for this content piece.
         setCurrentPageStructure(initialMockPageStructureForEditing);
       } else {
         console.warn(`Content with ID ${editId} not found for editing.`);
         setPageTitle("Create New Content (ID not found)");
         setInitialContent(null);
-        setCurrentPageStructure(null); // Treat as new if ID is invalid
+        setCurrentPageStructure(null); 
       }
-      setEditorMode('form'); // Default to form editor when editing existing content
+      setEditorMode('form'); 
     } else {
       // Creating new content
       setPageTitle("Create New Content");
       setInitialContent(null);
-      setEditorMode('chat'); // Default to chat/visual editor for new content
-      setCurrentPageStructure(null); // Start with an empty canvas for new content
+      setEditorMode('chat'); 
+      setCurrentPageStructure(null); 
     }
     setIsLoadingContent(false);
   }, [editId]);
@@ -129,7 +127,6 @@ function ContentStudioInner() {
             <Skeleton className="h-6 w-1/4 mb-2" />
             <Skeleton className="h-40 w-full" />
           </CardContent>
-          {/* CardFooter was removed previously, ensure it's not used if not imported or defined */}
         </Card>
       </div>
     );
@@ -140,7 +137,8 @@ function ContentStudioInner() {
     <div>
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">
         <h1 className="font-headline text-3xl font-bold text-primary">{pageTitle}</h1>
-        {editId && ( // Only show tabs if an editId is present
+        {/* Only show tabs if an editId is present OR if editorMode is 'form' (which implies editId or future new content form mode) */}
+        {(editId || editorMode === 'form') && (
           <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as 'form' | 'chat')} className="w-full sm:w-auto">
             <TabsList className="grid w-full grid-cols-2 sm:w-auto">
               <TabsTrigger value="form">Form Editor</TabsTrigger>
@@ -150,14 +148,17 @@ function ContentStudioInner() {
         )}
       </div>
 
-      {editorMode === 'form' && editId && (
+      {/* Render ContentForm if editorMode is 'form'. This mode is active when editing or could be for a new form-based creation if editId is null. */}
+      {editorMode === 'form' && (
         <div className="grid grid-cols-1 gap-8 items-start">
           <div>
+            {/* Pass initialContent if editing, otherwise undefined for a new form entry */}
             <ContentForm initialContent={initialContent || undefined} />
           </div>
         </div>
       )}
-
+      
+      {/* Render Chat/Visual editor if editorMode is 'chat'. This is default for new content if editId is null. */}
       {editorMode === 'chat' && (
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">
@@ -166,7 +167,10 @@ function ContentStudioInner() {
                 <CardTitle className="font-headline text-xl">AI Content Assistant</CardTitle>
               </CardHeader>
               <CardContent>
-                <ChatInterface setCurrentPageStructure={handleUpdatePageStructure} />
+                <ChatInterface 
+                  setCurrentPageStructure={handleUpdatePageStructure} 
+                  currentPageStructure={currentPageStructure} 
+                />
               </CardContent>
             </Card>
           </div>
