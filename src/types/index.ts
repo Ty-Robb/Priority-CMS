@@ -18,7 +18,7 @@ export interface MediaFile {
   type: 'image' | 'document'; // Example types
   size: number; // in bytes
   uploadedAt: string;
-  dataAiHint?: string; 
+  dataAiHint?: string;
 }
 
 export interface ChatMessage {
@@ -29,7 +29,7 @@ export interface ChatMessage {
 }
 
 // Visual Editor Types
-export type VisualBlockType = 'text' | 'image' | 'container' | 'button';
+export type VisualBlockType = 'text' | 'image' | 'container' | 'button' | 'list' | 'quote';
 
 export interface TextBlockProps {
   text: string;
@@ -55,7 +55,28 @@ export interface ContainerBlockProps {
   // Could add layout props like flexDirection, alignItems, justifyContent later.
 }
 
-export type VisualBlockPropsUnion = TextBlockProps | ImageBlockProps | ButtonBlockProps | ContainerBlockProps;
+export interface ListItemType {
+  id: string;
+  text: string;
+}
+
+export interface ListBlockProps {
+  items: ListItemType[];
+  ordered: boolean; // true for <ol>, false for <ul>
+}
+
+export interface QuoteBlockProps {
+  text: string;
+  citation?: string;
+}
+
+export type VisualBlockPropsUnion =
+  | TextBlockProps
+  | ImageBlockProps
+  | ButtonBlockProps
+  | ContainerBlockProps
+  | ListBlockProps
+  | QuoteBlockProps;
 
 export interface VisualBlock {
   id: string;

@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { VisualBlock, TextBlockProps, ImageBlockProps, ButtonBlockProps, ContainerBlockProps } from '@/types';
+import type { VisualBlock, TextBlockProps, ImageBlockProps, ButtonBlockProps, ContainerBlockProps, ListBlockProps, QuoteBlockProps, ListItemType } from '@/types';
 import Image from 'next/image';
 import { Button as ShadCnButton } from '@/components/ui/button'; // Renamed to avoid conflict
 
@@ -54,6 +54,30 @@ export function CanvasBlockRenderer({ block }: CanvasBlockRendererProps) {
             <CanvasBlockRenderer key={childBlock.id} block={childBlock} />
           ))}
         </div>
+      );
+    }
+    case 'list': {
+      const props = block.props as ListBlockProps;
+      const ListTag = props.ordered ? 'ol' : 'ul';
+      return (
+        <ListTag className={`my-2 pl-5 ${props.ordered ? 'list-decimal' : 'list-disc'}`}>
+          {props.items.map((item: ListItemType) => (
+            <li key={item.id} className="mb-1">{item.text}</li>
+          ))}
+        </ListTag>
+      );
+    }
+    case 'quote': {
+      const props = block.props as QuoteBlockProps;
+      return (
+        <blockquote className="my-4 p-4 border-l-4 border-primary bg-muted/50 rounded-r-md italic">
+          <p className="mb-2">{props.text}</p>
+          {props.citation && (
+            <footer className="text-sm text-muted-foreground">
+              <cite>— {props.citation}</cite>
+            </footer>
+          )}
+        </blockquote>
       );
     }
     default:

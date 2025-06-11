@@ -5,10 +5,10 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ContentForm } from '@/components/dashboard/content-form';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
-import { PageCanvas } from '@/components/visual-editor/page-canvas'; // New Import
+import { PageCanvas } from '@/components/visual-editor/page-canvas';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { ContentPiece, PageStructure } from '@/types'; // Updated Import
+import type { ContentPiece, PageStructure } from '@/types';
 import { mockContentData } from '@/lib/mock-data';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -23,31 +23,51 @@ const mockPageStructure: PageStructure = {
       props: { text: 'Welcome to this visually constructed page! This is a paragraph of text.', level: 'p' },
     },
     {
-      id: 'block-2',
+      id: 'block-img-hero',
       type: 'image',
       props: { src: 'https://placehold.co/800x300.png', alt: 'A placeholder banner image', dataAiHint: "banner image" },
     },
     {
-      id: 'block-3',
+      id: 'block-list-1',
+      type: 'list',
+      props: {
+        ordered: false,
+        items: [
+          { id: 'item-1', text: 'First feature item' },
+          { id: 'item-2', text: 'Second amazing point' },
+          { id: 'item-3', text: 'Third important detail' },
+        ],
+      },
+    },
+    {
+      id: 'block-container-1',
       type: 'container',
       props: {},
       children: [
         {
-          id: 'block-3-1',
+          id: 'block-c1-text1',
           type: 'text',
           props: { text: 'This text is inside a container.', level: 'h3' },
         },
         {
-          id: 'block-3-2',
+          id: 'block-c1-button1',
           type: 'button',
           props: { text: 'Click Me!', variant: 'secondary' },
         },
       ],
     },
+    {
+      id: 'block-quote-1',
+      type: 'quote',
+      props: {
+        text: "The only way to do great work is to love what you do.",
+        citation: "Steve Jobs"
+      }
+    },
      {
-      id: 'block-4',
+      id: 'block-para-2',
       type: 'text',
-      props: { text: 'Another paragraph to demonstrate structure.', level: 'p' },
+      props: { text: 'Another paragraph to demonstrate structure and new block types.', level: 'p' },
     },
   ],
 };
@@ -77,7 +97,7 @@ function ContentStudioInner() {
       }
     } else {
       setPageTitle("Content Studio");
-      setInitialContent(null); 
+      setInitialContent(null);
     }
     setIsLoadingContent(false);
   }, [editId]);
