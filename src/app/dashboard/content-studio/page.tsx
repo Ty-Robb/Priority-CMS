@@ -6,14 +6,14 @@ import { useSearchParams } from 'next/navigation';
 import { ContentForm } from '@/components/dashboard/content-form';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
 import { PageCanvas } from '@/components/visual-editor/page-canvas';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentPiece, PageStructure } from '@/types';
 import { mockContentData } from '@/lib/mock-data';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Hardcoded example PageStructure for initial display
-const initialMockPageStructure: PageStructure = {
+// Hardcoded example PageStructure for initial display when *editing*
+const initialMockPageStructureForEditing: PageStructure = {
   id: 'mock-page-1',
   title: 'My Visually Edited Page Title',
   blocks: [
@@ -75,11 +75,11 @@ const initialMockPageStructure: PageStructure = {
 
 function ContentStudioInner() {
   const searchParams = useSearchParams();
-  const [editorMode, setEditorMode] = useState<'form' | 'chat'>('form'); // Default for editing
+  const [editorMode, setEditorMode] = useState<'form' | 'chat'>('form');
   const [initialContent, setInitialContent] = useState<ContentPiece | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(true);
   const [pageTitle, setPageTitle] = useState("Content Studio");
-  const [currentPageStructure, setCurrentPageStructure] = useState<PageStructure | null>(initialMockPageStructure);
+  const [currentPageStructure, setCurrentPageStructure] = useState<PageStructure | null>(null); // Initialize to null
 
   const editId = searchParams.get('editId');
 
@@ -90,35 +90,31 @@ function ContentStudioInner() {
       const contentToEdit = mockContentData.find(content => content.id === editId);
       if (contentToEdit) {
         setInitialContent(contentToEdit);
-        // In a real scenario, load PageStructure associated with contentToEdit.id
-        // For now, if editing, let's assume we might want to start with the form editor or a saved structure.
-        // For simplicity, resetting to mock, but this should ideally load the *actual* saved visual structure if available.
-        setCurrentPageStructure(initialMockPageStructure); 
+        // For editing, we use the mock structure.
+        // In a real app, you'd load the actual saved visual structure for this content piece.
+        setCurrentPageStructure(initialMockPageStructureForEditing);
       } else {
         console.warn(`Content with ID ${editId} not found for editing.`);
-        // If editId is invalid, treat as new content creation.
-        setPageTitle("Create New Content");
+        setPageTitle("Create New Content (ID not found)");
         setInitialContent(null);
-        setEditorMode('chat'); // Force chat mode for new content
-        setCurrentPageStructure(initialMockPageStructure); // Reset to mock for new content
+        setCurrentPageStructure(null); // Treat as new if ID is invalid
       }
       setEditorMode('form'); // Default to form editor when editing existing content
     } else {
+      // Creating new content
       setPageTitle("Create New Content");
       setInitialContent(null);
       setEditorMode('chat'); // Default to chat/visual editor for new content
-      setCurrentPageStructure(initialMockPageStructure); // Reset to mock for new content
+      setCurrentPageStructure(null); // Start with an empty canvas for new content
     }
     setIsLoadingContent(false);
   }, [editId]);
 
-  const handleUpdatePageStructure = (updatedPage: PageStructure) => {
+  const handleUpdatePageStructure = (updatedPage: PageStructure | null) => {
     setCurrentPageStructure(updatedPage);
-    // Here you might also want to convert this PageStructure back to a string for the 'body'
-    // if the ContentForm is to be updated live from visual editor changes, or on save.
   };
 
-  if (isLoadingContent && editId) { // Show loading skeleton only if trying to load existing content
+  if (isLoadingContent && editId) {
     return (
       <div>
         <Skeleton className="h-10 w-1/3 mb-8" />
@@ -133,20 +129,18 @@ function ContentStudioInner() {
             <Skeleton className="h-6 w-1/4 mb-2" />
             <Skeleton className="h-40 w-full" />
           </CardContent>
-          <CardFooter>
-            <Skeleton className="h-10 w-24" />
-          </CardFooter>
+          {/* CardFooter was removed previously, ensure it's not used if not imported or defined */}
         </Card>
       </div>
     );
   }
 
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">
         <h1 className="font-headline text-3xl font-bold text-primary">{pageTitle}</h1>
-        {/* Only show tabs if an editId is present (i.e., editing existing content) */}
-        {editId && (
+        {editId && ( // Only show tabs if an editId is present
           <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as 'form' | 'chat')} className="w-full sm:w-auto">
             <TabsList className="grid w-full grid-cols-2 sm:w-auto">
               <TabsTrigger value="form">Form Editor</TabsTrigger>
@@ -156,8 +150,7 @@ function ContentStudioInner() {
         )}
       </div>
 
-      {/* If not editing (i.e. new content), editorMode will be 'chat' by default and ContentForm won't show */}
-      {editorMode === 'form' && editId && ( // ContentForm only shows if editing AND in form mode
+      {editorMode === 'form' && editId && (
         <div className="grid grid-cols-1 gap-8 items-start">
           <div>
             <ContentForm initialContent={initialContent || undefined} />
@@ -165,7 +158,6 @@ function ContentStudioInner() {
         </div>
       )}
 
-      {/* Visual/Chat editor shows if creating new OR if editing and chat mode is selected */}
       {editorMode === 'chat' && (
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">
