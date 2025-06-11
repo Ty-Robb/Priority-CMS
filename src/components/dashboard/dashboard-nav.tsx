@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -8,8 +9,7 @@ import {
   FileText,
   Image as ImageIcon,
   Settings,
-  Sparkles,
-  Tags,
+  ListOrdered, // New Icon
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -20,8 +20,8 @@ import {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/content-studio", label: "Content Studio", icon: FileText },
+  { href: "/dashboard/content-management", label: "Content List", icon: ListOrdered },
   { href: "/dashboard/media", label: "Media Library", icon: ImageIcon },
-  // { href: "/dashboard/templates", label: "Templates", icon: LayoutGrid }, // Placeholder for future
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
