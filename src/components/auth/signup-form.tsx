@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context";
 import { useState } from "react";
+import { Loader2 } from "lucide-react"; // Added loader icon
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -28,6 +29,7 @@ const formSchema = z.object({
 export function SignupForm() {
   const { login } = useAuth(); // Use login to set auth state after signup
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Added for loading state
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -39,15 +41,23 @@ export function SignupForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Placeholder for actual signup logic
-    console.log("Signup attempt with:", values);
     setError(null);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // On successful signup:
-    login("fake-auth-token"); // Log the user in
-    // On error:
-    // setError("Could not create account. Please try again.");
+    setIsSubmitting(true);
+    console.log("Signup attempt with:", values);
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // On successful signup:
+      login("fake-auth-token"); // Log the user in and redirect
+      // If login() successfully navigates, setIsSubmitting(false) might not be strictly needed
+      // as the component will unmount. It's set in catch for error cases.
+    } catch (e) {
+      console.error("Signup process failed:", e);
+      setError("Could not create account. Please try again.");
+      setIsSubmitting(false); // Reset loading state on error
+    }
   }
 
   return (
@@ -60,7 +70,7 @@ export function SignupForm() {
             <FormItem>
               <FormLabel>Full Name</FormLabel>
               <FormControl>
-                <Input placeholder="Your Name" {...field} />
+                <Input placeholder="Your Name" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -73,7 +83,7 @@ export function SignupForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="you@example.com" {...field} />
+                <Input type="email" placeholder="you@example.com" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -86,7 +96,7 @@ export function SignupForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -96,7 +106,12 @@ export function SignupForm() {
         <p className="text-xs text-muted-foreground">
           For this prototype, any valid name, email, and password (min. 6 characters) will simulate a successful signup and log you in.
         </p>
-        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+        <Button 
+          type="submit" 
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+          disabled={isSubmitting}
+        >
+          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Create Account
         </Button>
         <p className="text-center text-sm text-muted-foreground">
@@ -109,4 +124,3 @@ export function SignupForm() {
     </Form>
   );
 }
-
