@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -77,6 +78,9 @@ export function LoginForm() {
           )}
         />
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+        <p className="text-xs text-muted-foreground">
+          For this prototype, you can use any valid email and a password (min. 6 characters) to log in.
+        </p>
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
           Login
         </Button>
