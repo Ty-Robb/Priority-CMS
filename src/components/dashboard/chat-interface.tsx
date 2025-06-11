@@ -1,18 +1,24 @@
 
 "use client";
 
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Paperclip, Send, User, Bot } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { ChatMessage } from '@/types';
+import type { ChatMessage, PageStructure } from '@/types'; // Added PageStructure
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { generatePageContent, type GeneratePageContentOutput } from '@/ai/flows/generate-page-content';
+// Ensure the path is correct for your project structure
+import { generatePageContent, type GeneratePageContentOutput } from '@/ai/flows/generate-page-content'; 
+// Assuming generatePageContent now returns/aligns with PageStructure or can be mapped to it.
 
-export function ChatInterface() {
+interface ChatInterfaceProps {
+  setCurrentPageStructure: Dispatch<SetStateAction<PageStructure | null>>;
+}
+
+export function ChatInterface({ setCurrentPageStructure }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -36,7 +42,7 @@ export function ChatInterface() {
       timestamp: new Date().toISOString(),
     };
     setMessages((prevMessages) => [...prevMessages, newUserMessage]);
-    const currentInput = inputValue; // Store for use in async
+    const currentInput = inputValue;
     setInputValue('');
     setIsSending(true);
 
@@ -45,41 +51,43 @@ export function ChatInterface() {
 
     if (isCreatePageRequest) {
       try {
+        // The AI flow returns GeneratePageContentOutput
         const aiResponse: GeneratePageContentOutput = await generatePageContent({ prompt: currentInput });
 
+        // Adapt GeneratePageContentOutput to PageStructure
+        const newPageStructure: PageStructure = {
+          id: `page-${Date.now()}`, // Generate a unique ID
+          title: aiResponse.pageTitle,
+          blocks: aiResponse.sections.map((section, index) => ({
+            id: `block-${Date.now()}-${index}`, // Generate unique IDs for blocks
+            type: 'text', // Assuming sections map to text blocks for now
+            props: { text: `${section.sectionTitle}\n\n${section.sectionContent}`, level: index === 0 ? 'h2' : 'p' }, // Combine title and content, or handle separately
+          })),
+        };
+        setCurrentPageStructure(newPageStructure); // Update the visual canvas
+
+        // Display confirmation in chat
         const aiGeneratedMessages: ChatMessage[] = [];
         aiGeneratedMessages.push({
           id: (Date.now() + 1).toString(),
-          text: `Okay, I've drafted a page titled: "${aiResponse.pageTitle}"`,
+          text: `Okay, I've drafted a page titled: "${aiResponse.pageTitle}". You can see it on the canvas.`,
           sender: 'ai',
           timestamp: new Date().toISOString(),
         });
-
-        aiResponse.sections.forEach((section, index) => {
-          aiGeneratedMessages.push({
-            id: (Date.now() + 2 + index * 2).toString(), // Ensure unique IDs
-            text: `Section: ${section.sectionTitle}`,
-            sender: 'ai',
-            timestamp: new Date().toISOString(),
-          });
-          aiGeneratedMessages.push({
-            id: (Date.now() + 3 + index * 2).toString(), // Ensure unique IDs
-            text: section.sectionContent,
-            sender: 'ai',
-            timestamp: new Date().toISOString(),
-          });
-        });
+        // Optionally, you could summarize or list sections in chat too
+        // aiResponse.sections.forEach((section, index) => { ... });
         setMessages((prevMessages) => [...prevMessages, ...aiGeneratedMessages]);
 
       } catch (error) {
         console.error("Error generating page content:", error);
         const errorMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          text: "Sorry, I had trouble generating the page content. Please try again or rephrase your request.",
+          text: "Sorry, I had trouble generating the page content for the canvas. Please try again or rephrase your request.",
           sender: 'ai',
           timestamp: new Date().toISOString(),
         };
         setMessages((prevMessages) => [...prevMessages, errorMessage]);
+        setCurrentPageStructure(null); // Clear canvas on error
       }
     } else {
       // Simulate standard AI response for other queries
@@ -110,7 +118,7 @@ export function ChatInterface() {
         description: `"${file.name}" is ready. Ask the AI what to do with it.`,
       });
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""; // Reset file input
+        fileInputRef.current.value = ""; 
       }
     }
   };

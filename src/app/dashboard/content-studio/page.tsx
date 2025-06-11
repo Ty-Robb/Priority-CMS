@@ -13,7 +13,7 @@ import { mockContentData } from '@/lib/mock-data';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Hardcoded example PageStructure for initial display
-const mockPageStructure: PageStructure = {
+const initialMockPageStructure: PageStructure = {
   id: 'mock-page-1',
   title: 'My Visually Edited Page Title',
   blocks: [
@@ -81,7 +81,7 @@ function ContentStudioInner() {
   const [pageTitle, setPageTitle] = useState("Content Studio");
 
   // State for the visual editor's page structure
-  const [currentPageStructure, setCurrentPageStructure] = useState<PageStructure | null>(mockPageStructure);
+  const [currentPageStructure, setCurrentPageStructure] = useState<PageStructure | null>(initialMockPageStructure);
 
 
   const editId = searchParams.get('editId');
@@ -92,15 +92,24 @@ function ContentStudioInner() {
       const contentToEdit = mockContentData.find(content => content.id === editId);
       if (contentToEdit) {
         setInitialContent(contentToEdit);
+        // In a real scenario, you might fetch or convert 'contentToEdit.body' into a PageStructure
+        // For now, we'll reset to the mock structure or a blank one if editing.
+        // Or, ideally, load a PageStructure associated with contentToEdit.id
+        setCurrentPageStructure(initialMockPageStructure); // Or fetch/derive
       } else {
         console.warn(`Content with ID ${editId} not found for editing.`);
       }
     } else {
       setPageTitle("Content Studio");
       setInitialContent(null);
+      setCurrentPageStructure(initialMockPageStructure); // Reset to mock for new content
     }
     setIsLoadingContent(false);
   }, [editId]);
+
+  const handleUpdatePageStructure = (updatedPage: PageStructure) => {
+    setCurrentPageStructure(updatedPage);
+  };
 
   if (isLoadingContent && editId) {
     return (
@@ -153,13 +162,13 @@ function ContentStudioInner() {
                 <CardTitle className="font-headline text-xl">AI Content Assistant</CardTitle>
               </CardHeader>
               <CardContent>
-                 {/* In the future, ChatInterface might update currentPageStructure */}
-                <ChatInterface />
+                 {/* ChatInterface might update currentPageStructure via setCurrentPageStructure passed as a prop if needed */}
+                <ChatInterface setCurrentPageStructure={setCurrentPageStructure} />
               </CardContent>
             </Card>
           </div>
           <div className="md:col-span-2">
-            <PageCanvas page={currentPageStructure} />
+            <PageCanvas page={currentPageStructure} onUpdatePageStructure={handleUpdatePageStructure} />
           </div>
         </div>
       )}
