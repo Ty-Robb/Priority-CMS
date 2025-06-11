@@ -2,12 +2,12 @@
 "use client";
 
 import type { KeyboardEvent } from 'react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { PageStructure, VisualBlock, VisualBlockPropsUnion } from '@/types';
 import { CanvasBlockRenderer } from './canvas-block-renderer';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button'; // Added for "Add Block" button
-import { PlusCircle } from 'lucide-react'; // Icon for "Add Block" button
+import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -27,19 +27,21 @@ import {
 interface PageCanvasProps {
   page: PageStructure | null;
   onUpdatePageStructure: (updatedPage: PageStructure) => void;
+  initialTitle?: string; // Changed from pageTitle to initialTitle for clarity
+  onUpdateTitle: (newTitle: string) => void; // Callback to update parent's title state
 }
 
-export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
+export function PageCanvas({ page, onUpdatePageStructure, initialTitle, onUpdateTitle }: PageCanvasProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editableTitle, setEditableTitle] = useState(page?.title || '');
+  // editableTitle is the local state for the input field when editing title
+  const [editableTitle, setEditableTitle] = useState(initialTitle || page?.title || '');
 
   useEffect(() => {
-    if (page) {
-      setEditableTitle(page.title);
-    } else {
-      setEditableTitle(''); // Clear title if page is null
+    // Sync from prop if page or initialTitle changes and not currently editing
+    if (!isEditingTitle) {
+      setEditableTitle(initialTitle || page?.title || 'Untitled Page');
     }
-  }, [page]);
+  }, [page, initialTitle, isEditingTitle]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -52,27 +54,29 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
     setIsEditingTitle(true);
   };
 
-  const handleTitleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTitleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setEditableTitle(event.target.value);
   };
 
   const handleTitleBlur = () => {
+    setIsEditingTitle(false);
     if (page && page.title !== editableTitle) {
       onUpdatePageStructure({ ...page, title: editableTitle });
     }
-    setIsEditingTitle(false);
+    onUpdateTitle(editableTitle); // Update parent's title state
   };
 
   const handleTitleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       handleTitleBlur();
     } else if (event.key === 'Escape') {
-      setEditableTitle(page?.title || ''); 
+      setEditableTitle(page?.title || initialTitle || ''); 
       setIsEditingTitle(false);
+      // No need to call onUpdateTitle if escaping, keep original
     }
   };
 
-  const handleUpdateBlock = (blockId: string, newProps: Partial<VisualBlockPropsUnion>) => {
+  const handleUpdateBlock = useCallback((blockId: string, newProps: Partial<VisualBlockPropsUnion>) => {
     if (!page) return;
     const updateRecursively = (blocks: VisualBlock[]): VisualBlock[] => {
       return blocks.map(block => {
@@ -87,9 +91,9 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
     };
     const updatedBlocks = updateRecursively(page.blocks);
     onUpdatePageStructure({ ...page, blocks: updatedBlocks });
-  };
+  }, [page, onUpdatePageStructure]);
   
-  function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     if (!page) return;
     const {active, over} = event;
     if (over && active.id !== over.id) {
@@ -101,12 +105,10 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
         onUpdatePageStructure({...page, blocks: updatedBlocks});
       }
     }
-  }
+  }, [page, onUpdatePageStructure]);
 
-  const handleDeleteBlock = (blockId: string) => {
+  const handleDeleteBlock = useCallback((blockId: string) => {
     if (!page) return;
-    // This needs to recursively find and delete nested blocks if necessary for container blocks
-    // For now, focus on top-level. A more robust solution would handle children.
     const filterRecursively = (blocks: VisualBlock[]): VisualBlock[] => {
       const filtered = blocks.filter(block => block.id !== blockId);
       return filtered.map(block => {
@@ -118,9 +120,9 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
     };
     const updatedBlocks = filterRecursively(page.blocks);
     onUpdatePageStructure({ ...page, blocks: updatedBlocks });
-  };
+  }, [page, onUpdatePageStructure]);
 
-  const handleAddNewTextBlock = () => {
+  const handleAddNewTextBlock = useCallback(() => {
     const newBlock: VisualBlock = {
       id: `block-text-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       type: 'text',
@@ -129,20 +131,20 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
     if (page) {
       onUpdatePageStructure({ ...page, blocks: [...page.blocks, newBlock] });
     } else {
-      // If there's no page, create one with this block
-      onUpdatePageStructure({
+      const newPage: PageStructure = {
         id: `page-${Date.now()}`,
-        title: 'New Page Title',
+        title: editableTitle || "New Page Title", // Use current editableTitle or default
         blocks: [newBlock],
-      });
-      setEditableTitle('New Page Title'); // Set title for the new page
+      };
+      onUpdatePageStructure(newPage);
+      if (!initialTitle) onUpdateTitle(newPage.title); // Update parent title if it was not set
     }
-  };
+  }, [page, onUpdatePageStructure, editableTitle, initialTitle, onUpdateTitle]);
 
   if (!page) {
     return (
-      <div className="p-8 border border-dashed border-muted-foreground rounded-lg text-center text-muted-foreground min-h-[400px] flex flex-col items-center justify-center">
-        <p className="mb-4">No page structure to display. Generate content using the chat or add your first block.</p>
+      <div className="p-8 border border-dashed border-muted-foreground rounded-lg text-center text-muted-foreground min-h-[400px] flex flex-col items-center justify-center bg-white dark:bg-neutral-900">
+        <p className="mb-4">No page structure. Generate content via chat or add your first block.</p>
         <Button onClick={handleAddNewTextBlock} variant="outline">
           <PlusCircle className="mr-2 h-4 w-4" /> Add First Text Block
         </Button>
@@ -156,19 +158,19 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
         <Input
           type="text"
           value={editableTitle}
-          onChange={handleTitleChange}
+          onChange={handleTitleInputChange}
           onBlur={handleTitleBlur}
           onKeyDown={handleTitleKeyDown}
-          className="font-headline text-3xl md:text-4xl font-bold text-primary mb-6 pb-2 border-b border-transparent focus:border-primary"
+          className="font-headline text-3xl md:text-4xl font-bold text-primary mb-6 pb-2 border-b-2 border-primary focus:border-primary bg-transparent"
           autoFocus
         />
       ) : (
         <h1
-          className="font-headline text-3xl md:text-4xl font-bold text-primary mb-6 pb-2 border-b border-border cursor-pointer hover:bg-muted/30"
+          className="font-headline text-3xl md:text-4xl font-bold text-primary mb-6 pb-2 border-b border-border cursor-pointer hover:bg-muted/30 rounded-sm px-2 -mx-2"
           onDoubleClick={handleTitleDoubleClick}
           title="Double-click to edit title"
         >
-          {editableTitle || "Untitled Page"}
+          {editableTitle}
         </h1>
       )}
       <DndContext
@@ -187,8 +189,8 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
                 block={block} 
                 onUpdateBlock={handleUpdateBlock}
                 onDeleteBlock={handleDeleteBlock} 
-                pageStructure={page}
-                onUpdatePageStructure={onUpdatePageStructure}
+                pageStructure={page} // Pass full structure for context if needed by renderer (though not used yet)
+                onUpdatePageStructure={onUpdatePageStructure} // Pass down for potential deep updates (not used yet by renderer)
                 />
             ))}
           </div>
@@ -202,3 +204,5 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
     </div>
   );
 }
+
+    

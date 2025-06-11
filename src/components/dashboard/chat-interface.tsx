@@ -15,10 +15,11 @@ import { addTextBlockToPage, type AddTextBlockToPageOutput } from '@/ai/flows/ad
 
 interface ChatInterfaceProps {
   setCurrentPageStructure: Dispatch<SetStateAction<PageStructure | null>>;
-  currentPageStructure: PageStructure | null; // Added to read current state
+  currentPageStructure: PageStructure | null;
+  initialPageTitle: string; // To set title when creating new page
 }
 
-export function ChatInterface({ setCurrentPageStructure, currentPageStructure }: ChatInterfaceProps) {
+export function ChatInterface({ setCurrentPageStructure, currentPageStructure, initialPageTitle }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -63,7 +64,6 @@ export function ChatInterface({ setCurrentPageStructure, currentPageStructure }:
         if (currentInput.toLowerCase().startsWith(keyword.toLowerCase())) {
             isAddParagraphRequest = true;
             paragraphTextContent = currentInput.substring(keyword.length).trim();
-            // Remove quotes if text is wrapped in them
             if ((paragraphTextContent.startsWith('"') && paragraphTextContent.endsWith('"')) ||
                 (paragraphTextContent.startsWith("'") && paragraphTextContent.endsWith("'"))) {
                 paragraphTextContent = paragraphTextContent.substring(1, paragraphTextContent.length - 1);
@@ -71,7 +71,6 @@ export function ChatInterface({ setCurrentPageStructure, currentPageStructure }:
             break;
         }
     }
-
 
     if (isCreatePageRequest) {
       try {
@@ -99,14 +98,14 @@ export function ChatInterface({ setCurrentPageStructure, currentPageStructure }:
         
         const newPageStructure: PageStructure = {
           id: `page-${Date.now()}`,
-          title: aiResponse.pageTitle,
+          title: aiResponse.pageTitle || initialPageTitle, // Use AI title or passed initial
           blocks: newBlocks,
         };
         setCurrentPageStructure(newPageStructure);
 
         const aiConfirmationMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          text: `Okay, I've drafted a page titled: "${aiResponse.pageTitle}". You can see it on the canvas and edit it there.`,
+          text: `Okay, I've drafted a page titled: "${newPageStructure.title}". You can see it on the canvas and edit it there.`,
           sender: 'ai',
           timestamp: new Date().toISOString(),
         };
@@ -116,7 +115,7 @@ export function ChatInterface({ setCurrentPageStructure, currentPageStructure }:
         console.error("Error generating page content:", error);
         const errorMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          text: "Sorry, I had trouble generating the page content for the canvas. Please try again or rephrase your request.",
+          text: "Sorry, I had trouble generating the page content. Please try again.",
           sender: 'ai',
           timestamp: new Date().toISOString(),
         };
@@ -172,11 +171,10 @@ export function ChatInterface({ setCurrentPageStructure, currentPageStructure }:
         }
     }
     else {
-      // Simulate standard AI response for other queries
       await new Promise(resolve => setTimeout(resolve, 1000));
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: "I'm processing your request. How can I help further with your content? You can ask me to 'create a page about...' or, if a page is loaded, 'add paragraph saying ...'.",
+        text: "I'm processing your request. How can I help further? You can ask me to 'create a page about...' or, if a page is loaded, 'add paragraph saying ...'.",
         sender: 'ai',
         timestamp: new Date().toISOString(),
       };
@@ -251,7 +249,7 @@ export function ChatInterface({ setCurrentPageStructure, currentPageStructure }:
             className="hidden"
             accept=".txt,.pdf,.doc,.docx,.md" 
           />
-          <Button variant="ghost" size="icon" onClick={triggerFileUpload} aria-label="Upload document">
+          <Button variant="ghost" size="icon" onClick={triggerFileUpload} aria-label="Upload document" disabled={isSending}>
             <Paperclip className="h-5 w-5" />
           </Button>
           <Input
@@ -270,3 +268,5 @@ export function ChatInterface({ setCurrentPageStructure, currentPageStructure }:
     </div>
   );
 }
+
+    

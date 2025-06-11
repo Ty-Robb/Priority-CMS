@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
 import { ContentForm } from '@/components/dashboard/content-form';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
 import { PageCanvas } from '@/components/visual-editor/page-canvas';
@@ -11,8 +11,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentPiece, PageStructure } from '@/types';
 import { mockContentData } from '@/lib/mock-data';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button'; // Added Button
+import { Save, Loader2 } from 'lucide-react'; // Added Save icon
+import { useToast } from '@/hooks/use-toast'; // Added useToast
 
-// Hardcoded example PageStructure for initial display when *editing* content that *doesn't* have its own pageStructure
 const fallbackMockPageStructureForEditing: PageStructure = {
   id: 'mock-page-fallback-1',
   title: 'My Visually Edited Page Title (Fallback)',
@@ -44,11 +46,19 @@ const fallbackMockPageStructureForEditing: PageStructure = {
 
 function ContentStudioInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { toast } = useToast();
   const [editorMode, setEditorMode] = useState<'form' | 'chat'>('form');
   const [initialContent, setInitialContent] = useState<ContentPiece | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(true);
-  const [pageTitle, setPageTitle] = useState("Content Studio");
+  
+  // pageTitle is for the title displayed on canvas & potentially saved
+  const [pageTitle, setPageTitle] = useState("Create New Content"); 
+  // headerTitle is just for the H1 of the content studio page itself
+  const [headerTitle, setHeaderTitle] = useState("Create New Content");
+
   const [currentPageStructure, setCurrentPageStructure] = useState<PageStructure | null>(null);
+  const [isSavingVisual, setIsSavingVisual] = useState(false);
 
   const editId = searchParams.get('editId');
 
@@ -57,34 +67,108 @@ function ContentStudioInner() {
     if (editId) {
       const contentToEdit = mockContentData.find(content => content.id === editId);
       if (contentToEdit) {
-        setPageTitle(`Edit Content: ${contentToEdit.title}`);
+        setHeaderTitle(`Edit Content: ${contentToEdit.title}`);
+        setPageTitle(contentToEdit.pageStructure?.title || contentToEdit.title || "Untitled Page");
         setInitialContent(contentToEdit);
-        // Load the post's actual pageStructure if it exists, otherwise use the fallback
         setCurrentPageStructure(contentToEdit.pageStructure || fallbackMockPageStructureForEditing);
-        setEditorMode('form'); // Default to form editor when editing
+        // No default editorMode change here, let user decide or stick to previous if any
       } else {
-        // Content ID not found, treat as new content creation but show an error/warning message
         console.warn(`Content with ID ${editId} not found for editing.`);
-        setPageTitle("Create New Content (ID not found)");
+        setHeaderTitle("Create New Content (ID not found)");
+        setPageTitle("New Page Title");
         setInitialContent(null);
-        setCurrentPageStructure(null); // No structure if ID is invalid
-        setEditorMode('chat'); // Default to chat for effectively new content
+        setCurrentPageStructure(null);
+        setEditorMode('chat'); 
       }
     } else {
-      // Creating new content
-      setPageTitle("Create New Content");
+      setHeaderTitle("Create New Content");
+      setPageTitle("New Page Title"); // Default title for new page canvas
       setInitialContent(null);
-      setCurrentPageStructure(null); // Start with no structure for new content
-      setEditorMode('chat'); // Default to chat editor for new content
+      setCurrentPageStructure(null);
+      setEditorMode('chat'); 
     }
     setIsLoadingContent(false);
   }, [editId]);
 
-  const handleUpdatePageStructure = (updatedPage: PageStructure | null) => {
+  const handleUpdatePageStructure = useCallback((updatedPage: PageStructure | null) => {
     setCurrentPageStructure(updatedPage);
+    if (updatedPage?.title && updatedPage.title !== pageTitle) {
+      setPageTitle(updatedPage.title); // Sync canvas title changes to pageTitle state
+    }
+  },[pageTitle]);
+
+  const handleUpdatePageTitleFromCanvas = useCallback((newTitle: string) => {
+    setPageTitle(newTitle);
+  }, []);
+  
+  const handleVisualSave = () => {
+    setIsSavingVisual(true);
+    let savedContentPiece: ContentPiece;
+
+    if (initialContent && editId) { // Updating existing content
+        const index = mockContentData.findIndex(item => item.id === editId);
+        if (index !== -1) {
+            mockContentData[index] = {
+                ...mockContentData[index],
+                title: pageTitle, // Use the state `pageTitle` which might have been edited on canvas
+                pageStructure: currentPageStructure,
+                body: currentPageStructure ? "" : mockContentData[index].body, // Clear body if pageStructure exists
+                updatedAt: new Date().toISOString(),
+            };
+            savedContentPiece = mockContentData[index];
+            setInitialContent(savedContentPiece); // Update initialContent state
+            toast({ title: "Visual Content Updated!", description: "Your visual changes have been saved." });
+        } else {
+            toast({ title: "Error", description: "Could not find content to update.", variant: "destructive" });
+            setIsSavingVisual(false);
+            return;
+        }
+    } else { // Creating new content
+        const newId = String(Date.now() + Math.random());
+        const newContent: ContentPiece = {
+            id: newId,
+            title: pageTitle, // Use the state `pageTitle`
+            body: "", // New visual content starts with no simple body
+            status: 'Draft',
+            contentType: 'Visual Page', // Mark as visually created
+            keywords: [],
+            generatedHeadlines: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            pageStructure: currentPageStructure,
+        };
+        mockContentData.push(newContent);
+        savedContentPiece = newContent;
+        setInitialContent(savedContentPiece); // Set as initial content
+        setHeaderTitle(`Edit Content: ${newContent.title}`); // Update header
+        toast({ title: "Visual Content Saved!", description: "Your new page has been created and saved." });
+        router.push(`/dashboard/content-studio?editId=${newId}`); // Navigate to edit mode
+    }
+    setIsSavingVisual(false);
   };
 
-  if (isLoadingContent) { // Simplified loading state check
+  const handleFormSaved = (savedContent: ContentPiece) => {
+    // Update state if the form save affected the current content
+    if (editId && savedContent.id === editId) {
+      setInitialContent(savedContent);
+      setHeaderTitle(`Edit Content: ${savedContent.title}`);
+      // If form saves, it might affect pageStructure consistency.
+      // For now, we assume form mainly edits body/title.
+      // If it has pageStructure, it should ideally be synced or one mode preferred.
+      // Let's re-evaluate if pageStructure exists and was potentially cleared by form save.
+      if (savedContent.pageStructure) {
+        setCurrentPageStructure(savedContent.pageStructure);
+        setPageTitle(savedContent.pageStructure.title || savedContent.title);
+      } else if (!savedContent.pageStructure && currentPageStructure) {
+        // If form saved and cleared pageStructure, reflect that on canvas too or use fallback
+         // setCurrentPageStructure(fallbackMockPageStructureForEditing); // Or null to force recreation
+      }
+      setPageTitle(savedContent.title); // Ensure pageTitle (for canvas) is also updated from form save
+    }
+  };
+
+
+  if (isLoadingContent) {
     return (
       <div>
         <Skeleton className="h-10 w-1/3 mb-8" />
@@ -104,25 +188,35 @@ function ContentStudioInner() {
     );
   }
 
-
   return (
     <div>
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">
-        <h1 className="font-headline text-3xl font-bold text-primary">{pageTitle}</h1>
-        {(editId || editorMode === 'form') && (
-          <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as 'form' | 'chat')} className="w-full sm:w-auto">
-            <TabsList className="grid w-full grid-cols-2 sm:w-auto">
-              <TabsTrigger value="form">Form Editor</TabsTrigger>
-              <TabsTrigger value="chat">Visual/Chat Editor</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
+        <h1 className="font-headline text-3xl font-bold text-primary">{headerTitle}</h1>
+        <div className="flex gap-2 items-center">
+          {editorMode === 'chat' && (
+            <Button onClick={handleVisualSave} disabled={isSavingVisual || !currentPageStructure}>
+              {isSavingVisual ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Save Visual Changes
+            </Button>
+          )}
+          {(editId || editorMode === 'form') && ( // Only show tabs if editing or form mode explicitly chosen
+            <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as 'form' | 'chat')} className="w-full sm:w-auto">
+              <TabsList className="grid w-full grid-cols-2 sm:w-auto">
+                <TabsTrigger value="form">Form Editor</TabsTrigger>
+                <TabsTrigger value="chat">Visual Editor</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+           {!editId && editorMode === 'chat' && ( // If new content and in chat mode, no tabs needed initially
+            <span /> // Placeholder or different UI if needed
+           )}
+        </div>
       </div>
 
       {editorMode === 'form' && (
         <div className="grid grid-cols-1 gap-8 items-start">
           <div>
-            <ContentForm initialContent={initialContent || undefined} />
+            <ContentForm initialContent={initialContent || undefined} onFormSaved={handleFormSaved} />
           </div>
         </div>
       )}
@@ -138,12 +232,18 @@ function ContentStudioInner() {
                 <ChatInterface 
                   setCurrentPageStructure={handleUpdatePageStructure} 
                   currentPageStructure={currentPageStructure} 
+                  initialPageTitle={pageTitle} // Pass initialPageTitle
                 />
               </CardContent>
             </Card>
           </div>
           <div className="md:col-span-2">
-            <PageCanvas page={currentPageStructure} onUpdatePageStructure={handleUpdatePageStructure} />
+            <PageCanvas 
+              page={currentPageStructure} 
+              onUpdatePageStructure={handleUpdatePageStructure}
+              initialTitle={pageTitle} // Pass initialTitle from ContentStudioInner's state
+              onUpdateTitle={handleUpdatePageTitleFromCanvas} // Callback to update ContentStudioInner's pageTitle
+            />
           </div>
         </div>
       )}
@@ -158,3 +258,5 @@ export default function ContentStudioPage() {
     </Suspense>
   )
 }
+
+    
