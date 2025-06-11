@@ -23,19 +23,9 @@ export default function ContentStudioPage() {
       </div>
 
       {editorMode === 'form' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 gap-8 items-start">
+          <div>
             <ContentForm />
-          </div>
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-headline text-xl">AI Content Assistant</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ChatInterface /> {/* Assistant Chat */}
-              </CardContent>
-            </Card>
           </div>
         </div>
       )}
