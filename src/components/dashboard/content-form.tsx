@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -82,7 +83,7 @@ export function ContentForm() {
       <Card>
         <CardHeader>
           <CardTitle className="font-headline text-2xl">Create New Content</CardTitle>
-          <CardDescription>Fill in the details for your new article or blog post.</CardDescription>
+          <CardDescription>Create and refine your content using the rich-text form editor.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
