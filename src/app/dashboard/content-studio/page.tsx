@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ContentForm } from '@/components/dashboard/content-form';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ContentPiece } from '@/types';
 import { mockContentData } from '@/lib/mock-data'; // Import centralized mock data
