@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2, Edit } from 'lucide-react';
+import { GripVertical, Trash2, Edit, PlusCircle } from 'lucide-react'; // Added PlusCircle
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -29,6 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 
 interface CanvasBlockRendererProps {
   block: VisualBlock;
@@ -187,7 +189,6 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
   const handleOpenListEditDialog = () => {
     if (block.type === 'list') {
       const props = block.props as ListBlockProps;
-      // Deep copy items to avoid direct state mutation
       setCurrentListProps({ 
         items: props.items.map(item => ({ ...item })), 
         ordered: props.ordered 
@@ -198,7 +199,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
 
   const handleListItemTextChange = (itemId: string, newText: string) => {
     setCurrentListProps(prev => {
-      if (!prev || !prev.items) return prev; // Should not happen if dialog is open
+      if (!prev || !prev.items) return prev;
       return {
         ...prev,
         items: prev.items.map(item => 
@@ -208,11 +209,33 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
     });
   };
 
-  const handleListOrderedChange = (ordered: string) => { // Radix Select returns string value
+  const handleListOrderedChange = (ordered: string) => { 
     setCurrentListProps(prev => ({
       ...prev,
       ordered: ordered === 'true',
     }));
+  };
+
+  const handleAddNewListItem = () => {
+    setCurrentListProps(prev => {
+      if (!prev) return prev; // Should not happen
+      const newItemId = `item-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const newItems = [...(prev.items || []), { id: newItemId, text: '' }];
+      return {
+        ...prev,
+        items: newItems,
+      };
+    });
+  };
+
+  const handleDeleteListItem = (itemIdToDelete: string) => {
+    setCurrentListProps(prev => {
+      if (!prev || !prev.items) return prev;
+      return {
+        ...prev,
+        items: prev.items.filter(item => item.id !== itemIdToDelete),
+      };
+    });
   };
   
   const handleSaveListProps = () => {
@@ -609,11 +632,11 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
             <DialogHeader>
               <DialogTitle>Edit List Properties</DialogTitle>
               <DialogDescription>
-                Modify the list items and type.
+                Modify the list items and type. Add or remove items as needed.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
+              <div className="grid grid-cols-4 items-center gap-4 mb-4">
                 <Label htmlFor="list-type" className="text-right">
                   List Type
                 </Label>
@@ -631,24 +654,39 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
                 </Select>
               </div>
               
-              <Label className="col-span-4 mt-2">List Items:</Label>
-              {currentListProps.items?.map((item, index) => (
-                <div key={item.id} className="grid grid-cols-4 items-center gap-x-4 gap-y-1 col-span-4">
-                   <Label htmlFor={`list-item-${item.id}`} className="text-right sr-only">
-                     Item {index + 1}
-                  </Label>
-                  <Input
-                    id={`list-item-${item.id}`}
-                    value={item.text}
-                    onChange={(e) => handleListItemTextChange(item.id, e.target.value)}
-                    className="col-span-4" 
-                    placeholder={`Item ${index + 1} text`}
-                  />
-                  {/* Placeholder for delete item button if added later */}
+              <Label className="col-span-4 font-medium">List Items:</Label>
+              <ScrollArea className="max-h-[250px] pr-3">
+                <div className="space-y-3">
+                  {currentListProps.items?.map((item, index) => (
+                    <div key={item.id} className="flex items-center gap-2">
+                      <Input
+                        id={`list-item-${item.id}`}
+                        value={item.text}
+                        onChange={(e) => handleListItemTextChange(item.id, e.target.value)}
+                        className="flex-grow" 
+                        placeholder={`Item ${index + 1} text`}
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-destructive hover:bg-destructive/10 h-8 w-8"
+                        onClick={() => handleDeleteListItem(item.id)}
+                        aria-label={`Delete item ${index + 1}`}
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {/* Placeholder for add new item button if added later */}
-
+              </ScrollArea>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleAddNewListItem} 
+                className="mt-2 w-full"
+              >
+                <PlusCircle size={16} className="mr-2" /> Add New Item
+              </Button>
             </div>
             <DialogFooter>
               <DialogClose asChild>
