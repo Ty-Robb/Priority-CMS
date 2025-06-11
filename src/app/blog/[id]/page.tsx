@@ -6,9 +6,10 @@ import { useParams, useRouter } from 'next/navigation';
 import type { ContentPiece } from '@/types';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
-import { mockContentData } from '@/lib/mock-data'; // Import centralized mock data
+import { mockContentData } from '@/lib/mock-data';
+import { PublicBlockRenderer } from '@/components/public/public-block-renderer'; // New import
 
 export default function BlogPostPage() {
   const params = useParams();
@@ -24,7 +25,6 @@ export default function BlogPostPage() {
   useEffect(() => {
     if (mounted && params.id) {
       const postId = params.id as string;
-      // Simulate fetching data
       const foundPost = mockContentData.find(p => p.id === postId);
       if (foundPost) {
         setPost(foundPost);
@@ -59,8 +59,10 @@ export default function BlogPostPage() {
     );
   }
   
-  // Basic rendering for body text - split by newlines for paragraphs
-  const bodyParagraphs = post.body.split('\\n\\n');
+  const pageDisplayTitle = post.pageStructure?.title || post.title;
+  const headerImageSrc = post.pageStructure?.blocks?.find(b => b.type === 'image')?.props.src || `https://placehold.co/1200x600.png?text=${encodeURIComponent(pageDisplayTitle)}`;
+  const headerImageAlt = post.pageStructure?.blocks?.find(b => b.type === 'image')?.props.alt || pageDisplayTitle;
+  const headerImageDataAiHint = post.pageStructure?.blocks?.find(b => b.type === 'image')?.props.dataAiHint || "blog header";
 
   return (
     <div className="bg-background min-h-screen">
@@ -80,16 +82,16 @@ export default function BlogPostPage() {
           
           <Card className="overflow-hidden shadow-lg">
              <Image 
-                src={`https://placehold.co/1200x600.png?text=${encodeURIComponent(post.title)}`}
-                alt={post.title}
+                src={headerImageSrc as string}
+                alt={headerImageAlt as string}
                 width={1200}
                 height={600}
                 className="w-full object-cover"
-                data-ai-hint="blog header"
+                data-ai-hint={headerImageDataAiHint as string}
               />
             <CardHeader className="p-6">
               <CardTitle className="font-headline text-4xl font-bold text-primary mb-2">
-                {post.title}
+                {pageDisplayTitle}
               </CardTitle>
               <div className="text-sm text-muted-foreground mb-4 space-x-2">
                 <span>Published on {new Date(post.createdAt).toLocaleDateString()}</span>
@@ -107,9 +109,15 @@ export default function BlogPostPage() {
               )}
             </CardHeader>
             <CardContent className="p-6 prose prose-lg max-w-none dark:prose-invert">
-              {bodyParagraphs.map((paragraph, index) => (
-                <p key={index} className="mb-4 last:mb-0">{paragraph}</p>
-              ))}
+              {post.pageStructure && post.pageStructure.blocks.length > 0 ? (
+                post.pageStructure.blocks.map(block => (
+                  <PublicBlockRenderer key={block.id} block={block} />
+                ))
+              ) : (
+                post.body.split('\\n\\n').map((paragraph, index) => (
+                  <p key={index} className="mb-4 last:mb-0">{paragraph}</p>
+                ))
+              )}
             </CardContent>
           </Card>
         </article>

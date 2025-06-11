@@ -9,6 +9,7 @@ export interface ContentPiece {
   generatedHeadlines: string[];
   createdAt: string; // Using string for simplicity with Date
   updatedAt: string;
+  pageStructure?: PageStructure; // Optional: For rich content editing
 }
 
 export interface MediaFile {
