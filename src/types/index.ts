@@ -4,6 +4,7 @@ export interface ContentPiece {
   title: string;
   body: string;
   status: 'Draft' | 'Published' | 'Archived';
+  contentType: string; // Added to support different content types
   keywords: string[];
   generatedHeadlines: string[];
   createdAt: string; // Using string for simplicity with Date
@@ -26,4 +27,3 @@ export interface ChatMessage {
   sender: 'user' | 'ai' | 'system';
   timestamp: string; // ISO 8601 date string
 }
-

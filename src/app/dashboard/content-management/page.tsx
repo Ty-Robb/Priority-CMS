@@ -35,6 +35,7 @@ const mockContent: ContentPiece[] = [
     id: "1",
     title: "The Future of AI in Content Creation",
     status: "Published",
+    contentType: "Blog Post",
     keywords: ["AI", "content", "future"],
     generatedHeadlines: [],
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString(), // 5 days ago
@@ -45,6 +46,7 @@ const mockContent: ContentPiece[] = [
     id: "2",
     title: "Top 10 React Best Practices",
     status: "Draft",
+    contentType: "Technical Article",
     keywords: ["React", "best practices", "development"],
     generatedHeadlines: [],
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
@@ -53,9 +55,10 @@ const mockContent: ContentPiece[] = [
   },
   {
     id: "3",
-    title: "Getting Started with Next.js 15",
+    title: "About Us - Our Company Story",
     status: "Published",
-    keywords: ["Next.js", "tutorial", "web dev"],
+    contentType: "Page",
+    keywords: ["company", "about", "mission"],
     generatedHeadlines: [],
     createdAt: new Date(Date.now() - 86400000 * 10).toISOString(), // 10 days ago
     updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
@@ -63,13 +66,25 @@ const mockContent: ContentPiece[] = [
   },
   {
     id: "4",
-    title: "Understanding Server Components",
+    title: "Understanding Server Components - A Deep Dive",
     status: "Archived",
+    contentType: "Blog Post",
     keywords: ["Server Components", "React", "Next.js"],
     generatedHeadlines: [],
     createdAt: new Date(Date.now() - 86400000 * 20).toISOString(), // 20 days ago
     updatedAt: new Date(Date.now() - 86400000 * 15).toISOString(), // 15 days ago
     body: "This is the body of the article...",
+  },
+  {
+    id: "5",
+    title: "Project Alpha Showcase",
+    status: "Published",
+    contentType: "Portfolio Item",
+    keywords: ["case study", "project", "design"],
+    generatedHeadlines: [],
+    createdAt: new Date(Date.now() - 86400000 * 12).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000 * 4).toISOString(),
+    body: "Detailed description of Project Alpha...",
   },
 ];
 
@@ -126,6 +141,7 @@ export default function ContentManagementPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Title</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="hidden md:table-cell">
                   Last Updated
@@ -141,7 +157,7 @@ export default function ContentManagementPage() {
             <TableBody>
               {contentList.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No content created yet.
                   </TableCell>
                 </TableRow>
@@ -149,6 +165,7 @@ export default function ContentManagementPage() {
                 contentList.map((content) => (
                   <TableRow key={content.id}>
                     <TableCell className="font-medium">{content.title}</TableCell>
+                    <TableCell>{content.contentType}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(content.status)}>
                         {content.status}
