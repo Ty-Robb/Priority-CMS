@@ -16,12 +16,12 @@ const PageSectionSchema = z.object({
   sectionContent: z.string().describe('The main content or body text for this section. This should be a few paragraphs long.'),
 });
 
-export const GeneratePageContentInputSchema = z.object({
+const GeneratePageContentInputSchema = z.object({
   prompt: z.string().describe('A description of the page to be generated, including its purpose and key elements.'),
 });
 export type GeneratePageContentInput = z.infer<typeof GeneratePageContentInputSchema>;
 
-export const GeneratePageContentOutputSchema = z.object({
+const GeneratePageContentOutputSchema = z.object({
   pageTitle: z.string().describe('A suggested title for the webpage.'),
   sections: z.array(PageSectionSchema).describe('An array of sections that make up the page content.'),
 });
@@ -56,3 +56,4 @@ const generatePageContentFlow = ai.defineFlow(
     return output!;
   }
 );
+
