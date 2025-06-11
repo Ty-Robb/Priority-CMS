@@ -10,20 +10,34 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2 } from 'lucide-react';
+import { GripVertical, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface CanvasBlockRendererProps {
   block: VisualBlock;
   onUpdateBlock: (blockId: string, newProps: Partial<VisualBlockPropsUnion>) => void;
-  onDeleteBlock: (blockId: string) => void; // New prop for deleting
+  onDeleteBlock: (blockId: string) => void;
   pageStructure: PageStructure; 
   onUpdatePageStructure: (updatedPage: PageStructure) => void; 
 }
 
 export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageStructure, onUpdatePageStructure }: CanvasBlockRendererProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingText, setIsEditingText] = useState(false);
   const [editableContent, setEditableContent] = useState(''); 
+
+  // State for image editing dialog
+  const [isImageEditOpen, setIsImageEditOpen] = useState(false);
+  const [currentImageProps, setCurrentImageProps] = useState<Partial<ImageBlockProps>>({});
 
   const {
     attributes,
@@ -49,51 +63,72 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
   }, [block.props, block.type]);
 
 
-  const handleDoubleClick = () => {
+  const handleTextDoubleClick = () => {
     if (block.type === 'text') { 
-      setIsEditing(true);
+      setIsEditingText(true);
     }
   };
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleTextChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setEditableContent(event.target.value);
   };
 
-  const handleBlur = () => {
+  const handleTextBlur = () => {
     if (block.type === 'text') {
       const currentProps = block.props as TextBlockProps;
       if (currentProps.text !== editableContent) {
         onUpdateBlock(block.id, { text: editableContent } as Partial<TextBlockProps>);
       }
     }
-    setIsEditing(false);
+    setIsEditingText(false);
   };
   
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleTextKeyDown = (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && block.type === 'text') { 
       event.preventDefault(); 
-      handleBlur();
+      handleTextBlur();
     } else if (event.key === 'Escape') {
        if (block.type === 'text') {
         setEditableContent((block.props as TextBlockProps).text); 
       }
-      setIsEditing(false);
+      setIsEditingText(false);
     }
   };
+
+  const handleOpenImageEditDialog = () => {
+    if (block.type === 'image') {
+      setCurrentImageProps(block.props as ImageBlockProps);
+      setIsImageEditOpen(true);
+    }
+  };
+
+  const handleImagePropChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCurrentImageProps(prev => ({ 
+      ...prev, 
+      [name]: (name === 'width' || name === 'height') ? (value === '' ? undefined : Number(value)) : value 
+    }));
+  };
+
+  const handleSaveImageProps = () => {
+    onUpdateBlock(block.id, currentImageProps);
+    setIsImageEditOpen(false);
+  };
+
 
   const renderBlockContent = () => {
     switch (block.type) {
       case 'text': {
         const props = block.props as TextBlockProps;
         const Tag = props.level || 'p';
-        if (isEditing) {
+        if (isEditingText) {
           if (Tag === 'p' || Tag === 'h4' || Tag === 'h5' || Tag === 'h6') {
              return (
               <Textarea
                 value={editableContent}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                onKeyDown={handleKeyDown}
+                onChange={handleTextChange}
+                onBlur={handleTextBlur}
+                onKeyDown={handleTextKeyDown}
                 className={`my-2 w-full min-h-[60px] resize-none text-base ${Tag !== 'p' ? 'font-bold' : ''} ${Tag === 'h1' ? 'text-4xl' : Tag === 'h2' ? 'text-3xl' : Tag === 'h3' ? 'text-2xl' : '' }`}
                 autoFocus
               />
@@ -103,9 +138,9 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
               <Input
                 type="text"
                 value={editableContent}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                onKeyDown={handleKeyDown}
+                onChange={handleTextChange}
+                onBlur={handleTextBlur}
+                onKeyDown={handleTextKeyDown}
                 className={`my-2 w-full font-bold ${Tag === 'h1' ? 'text-4xl' : Tag === 'h2' ? 'text-3xl' : Tag === 'h3' ? 'text-2xl' : '' }`}
                 autoFocus
               />
@@ -113,7 +148,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
         }
         return (
           <Tag 
-            onDoubleClick={handleDoubleClick} 
+            onDoubleClick={handleTextDoubleClick} 
             title="Double-click to edit"
             className={`my-2 cursor-pointer hover:bg-muted/30 ${Tag !== 'p' ? 'font-bold' : ''} ${Tag === 'h1' ? 'text-4xl' : Tag === 'h2' ? 'text-3xl' : Tag === 'h3' ? 'text-2xl' : '' }`}
           >
@@ -124,7 +159,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
       case 'image': {
         const props = block.props as ImageBlockProps;
         return (
-          <div className="my-4">
+          <div className="my-4 relative group/image"> {/* Added group/image for edit button positioning if needed */}
             <Image
               src={props.src || `https://placehold.co/${props.width || 600}x${props.height || 400}.png`}
               alt={props.alt || 'Placeholder image'}
@@ -159,7 +194,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
                 key={childBlock.id} 
                 block={childBlock} 
                 onUpdateBlock={onUpdateBlock}
-                onDeleteBlock={onDeleteBlock} // Pass down delete for nested (though not fully supported for nested DnD yet)
+                onDeleteBlock={onDeleteBlock}
                 pageStructure={pageStructure}
                 onUpdatePageStructure={onUpdatePageStructure}
               />
@@ -209,6 +244,17 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
           >
             <GripVertical size={16} />
           </Button>
+          {block.type === 'image' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="p-1 text-muted-foreground hover:text-primary h-7 w-7"
+              aria-label="Edit image properties"
+              onClick={handleOpenImageEditDialog}
+            >
+              <Edit size={16} />
+            </Button>
+          )}
           <Button 
             variant="ghost"
             size="icon"
@@ -220,6 +266,98 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
           </Button>
        </div>
       {renderBlockContent()}
+
+      {block.type === 'image' && (
+        <Dialog open={isImageEditOpen} onOpenChange={setIsImageEditOpen}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>Edit Image Properties</DialogTitle>
+              <DialogDescription>
+                Update the details for your image block. Click save when you're done.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="img-src" className="text-right">
+                  Image URL
+                </Label>
+                <Input
+                  id="img-src"
+                  name="src"
+                  value={currentImageProps.src || ''}
+                  onChange={handleImagePropChange}
+                  className="col-span-3"
+                  placeholder="https://example.com/image.png"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="img-alt" className="text-right">
+                  Alt Text
+                </Label>
+                <Input
+                  id="img-alt"
+                  name="alt"
+                  value={currentImageProps.alt || ''}
+                  onChange={handleImagePropChange}
+                  className="col-span-3"
+                  placeholder="Descriptive text for the image"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="img-width" className="text-right">
+                  Width (px)
+                </Label>
+                <Input
+                  id="img-width"
+                  name="width"
+                  type="number"
+                  value={currentImageProps.width || ''}
+                  onChange={handleImagePropChange}
+                  className="col-span-3"
+                  placeholder="e.g., 600"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="img-height" className="text-right">
+                  Height (px)
+                </Label>
+                <Input
+                  id="img-height"
+                  name="height"
+                  type="number"
+                  value={currentImageProps.height || ''}
+                  onChange={handleImagePropChange}
+                  className="col-span-3"
+                  placeholder="e.g., 400"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="img-dataAiHint" className="text-right">
+                  AI Hint
+                </Label>
+                <Input
+                  id="img-dataAiHint"
+                  name="dataAiHint"
+                  value={currentImageProps.dataAiHint || ''}
+                  onChange={handleImagePropChange}
+                  className="col-span-3"
+                  placeholder="e.g., 'modern art'"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="button" onClick={handleSaveImageProps}>
+                Update Image
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
