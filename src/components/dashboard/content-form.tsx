@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateHeadlineOptions } from "@/ai/flows/generate-headline-options";
 import { suggestRelevantKeywords } from "@/ai/flows/suggest-relevant-keywords";
 import { Sparkles, Tags, CheckCircle, Loader2 } from "lucide-react";
@@ -80,103 +80,115 @@ export function ContentForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline text-2xl">Create New Content</CardTitle>
-          <CardDescription>Create and refine your content using the rich-text form editor.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <Label htmlFor="title" className="text-lg font-medium">Title</Label>
-            <Input id="title" {...register("title")} placeholder="Your Awesome Title" className="mt-1 text-base" />
-            {errors.title && <p className="text-sm text-destructive mt-1">{errors.title.message}</p>}
-          </div>
+      <Tabs defaultValue="editor" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="editor">Content Editor</TabsTrigger>
+          <TabsTrigger value="keywords">AI Keyword Suggester</TabsTrigger>
+        </TabsList>
 
-          <div>
-            <Label htmlFor="body" className="text-lg font-medium">Content Body</Label>
-            <Textarea
-              id="body"
-              {...register("body")}
-              placeholder="Start writing your amazing content here..."
-              className="mt-1 min-h-[300px] text-base"
-            />
-            {errors.body && <p className="text-sm text-destructive mt-1">{errors.body.message}</p>}
-          </div>
-        </CardContent>
-        <CardFooter>
-           <Button type="submit" size="lg">
-            Save Content
-          </Button>
-        </CardFooter>
-      </Card>
-
-      <div className="grid md:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline flex items-center gap-2">
-              <Sparkles className="text-primary" /> AI Headline Generator
-            </CardTitle>
-            <CardDescription>Generate alternative headlines for your content.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {generatedHeadlines.length > 0 && (
-              <ul className="space-y-2 mb-4 list-disc list-inside bg-muted/30 p-4 rounded-md">
-                {generatedHeadlines.map((headline, index) => (
-                  <li key={index} className="text-sm">{headline}</li>
-                ))}
-              </ul>
-            )}
-            <Button
-              type="button"
-              onClick={handleGenerateHeadlines}
-              disabled={isGeneratingHeadlines || !contentBody}
-              className="w-full"
-              variant="outline"
-            >
-              {isGeneratingHeadlines ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
-              Generate Headlines
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline flex items-center gap-2">
-              <Tags className="text-primary" /> AI Keyword Suggester
-            </CardTitle>
-            <CardDescription>Get relevant keyword suggestions for SEO.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {suggestedKeywords.length > 0 && (
-              <div className="space-x-2 mb-4 bg-muted/30 p-4 rounded-md">
-                {suggestedKeywords.map((keyword, index) => (
-                  <span key={index} className="inline-block bg-accent text-accent-foreground text-xs font-medium px-2.5 py-0.5 rounded-full">
-                    {keyword}
-                  </span>
-                ))}
+        <TabsContent value="editor">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl">Create New Content</CardTitle>
+              <CardDescription>Craft and refine your content using the form editor. Use AI tools to enhance your work.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <Label htmlFor="title" className="text-lg font-medium">Title</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input id="title" {...register("title")} placeholder="Your Awesome Title" className="text-base flex-grow" />
+                  <Button
+                    type="button"
+                    onClick={handleGenerateHeadlines}
+                    disabled={isGeneratingHeadlines || !contentBody}
+                    variant="outline"
+                    size="icon"
+                    aria-label="Generate Headlines"
+                  >
+                    {isGeneratingHeadlines ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {errors.title && <p className="text-sm text-destructive mt-1">{errors.title.message}</p>}
+                {generatedHeadlines.length > 0 && (
+                  <div className="mt-4 space-y-2 p-4 rounded-md bg-muted/30">
+                     <h4 className="text-sm font-medium text-muted-foreground">Generated Headlines:</h4>
+                    <ul className="list-disc list-inside">
+                      {generatedHeadlines.map((headline, index) => (
+                        <li key={index} className="text-sm">{headline}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
-            )}
-            <Button
-              type="button"
-              onClick={handleSuggestKeywords}
-              disabled={isSuggestingKeywords || !contentBody}
-              className="w-full"
-              variant="outline"
-            >
-              {isSuggestingKeywords ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Tags className="mr-2 h-4 w-4" />
+
+              <div>
+                <Label htmlFor="body" className="text-lg font-medium">Content Body</Label>
+                <Textarea
+                  id="body"
+                  {...register("body")}
+                  placeholder="Start writing your amazing content here..."
+                  className="mt-1 min-h-[300px] text-base"
+                />
+                {errors.body && <p className="text-sm text-destructive mt-1">{errors.body.message}</p>}
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" size="lg">
+                Save Content
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="keywords">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline flex items-center gap-2">
+                <Tags className="text-primary" /> AI Keyword Suggester
+              </CardTitle>
+              <CardDescription>Get relevant keyword suggestions based on the content in the "Content Editor" tab.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                type="button"
+                onClick={handleSuggestKeywords}
+                disabled={isSuggestingKeywords || !contentBody}
+                className="w-full"
+                variant="outline"
+              >
+                {isSuggestingKeywords ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Tags className="mr-2 h-4 w-4" />
+                )}
+                Suggest Keywords for Content
+              </Button>
+              {suggestedKeywords.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Suggested Keywords:</h4>
+                  <div className="space-x-2 space-y-2 bg-muted/30 p-4 rounded-md">
+                    {suggestedKeywords.map((keyword, index) => (
+                      <span key={index} className="inline-block bg-accent text-accent-foreground text-xs font-medium px-2.5 py-0.5 rounded-full">
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
-              Suggest Keywords
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+               {suggestedKeywords.length === 0 && !isSuggestingKeywords && contentBody && (
+                 <p className="text-sm text-muted-foreground text-center pt-4">Click the button above to suggest keywords based on your current content.</p>
+               )}
+               {!contentBody && (
+                  <p className="text-sm text-muted-foreground text-center pt-4">Please write some content in the 'Content Editor' tab first to get keyword suggestions.</p>
+               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </form>
   );
 }
