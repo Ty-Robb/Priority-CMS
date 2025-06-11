@@ -43,9 +43,12 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
   const [editableContent, setEditableContent] = useState(''); 
   const [editableLevel, setEditableLevel] = useState<TextBlockProps['level']>('p');
 
-  // State for image editing dialog
   const [isImageEditOpen, setIsImageEditOpen] = useState(false);
   const [currentImageProps, setCurrentImageProps] = useState<Partial<ImageBlockProps>>({});
+
+  const [isButtonEditOpen, setIsButtonEditOpen] = useState(false);
+  const [currentButtonProps, setCurrentButtonProps] = useState<Partial<ButtonBlockProps>>({});
+
 
   const {
     attributes,
@@ -76,8 +79,8 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
   const handleTextDoubleClick = () => {
     if (block.type === 'text') { 
       const props = block.props as TextBlockProps;
-      setEditableContent(props.text); // Ensure fresh content on edit start
-      setEditableLevel(props.level || 'p'); // Ensure fresh level on edit start
+      setEditableContent(props.text); 
+      setEditableLevel(props.level || 'p'); 
       setIsEditingText(true);
     }
   };
@@ -99,7 +102,6 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
       if (currentProps.text !== editableContent) {
         onUpdateBlock(block.id, { text: editableContent } as Partial<TextBlockProps>);
       }
-      // Level is updated on change, so no need to update level here
     }
     setIsEditingText(false);
   };
@@ -136,6 +138,27 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
   const handleSaveImageProps = () => {
     onUpdateBlock(block.id, currentImageProps);
     setIsImageEditOpen(false);
+  };
+
+  const handleOpenButtonEditDialog = () => {
+    if (block.type === 'button') {
+      setCurrentButtonProps(block.props as ButtonBlockProps);
+      setIsButtonEditOpen(true);
+    }
+  };
+
+  const handleButtonPropChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCurrentButtonProps(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleButtonVariantChange = (variant: ButtonBlockProps['variant']) => {
+    setCurrentButtonProps(prev => ({ ...prev, variant }));
+  };
+
+  const handleSaveButtonProps = () => {
+    onUpdateBlock(block.id, currentButtonProps);
+    setIsButtonEditOpen(false);
   };
 
 
@@ -277,18 +300,17 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
           >
             <GripVertical size={16} />
           </Button>
-          {block.type === 'image' && (
+          {(block.type === 'image' || block.type === 'button') && (
             <Button
               variant="ghost"
               size="icon"
               className="p-1 text-muted-foreground hover:text-primary h-7 w-7"
-              aria-label="Edit image properties"
-              onClick={handleOpenImageEditDialog}
+              aria-label={`Edit ${block.type} properties`}
+              onClick={block.type === 'image' ? handleOpenImageEditDialog : handleOpenButtonEditDialog}
             >
               <Edit size={16} />
             </Button>
           )}
-          {/* Future: Add edit button for other block types here if needed */}
           <Button 
             variant="ghost"
             size="icon"
@@ -392,6 +414,79 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
           </DialogContent>
         </Dialog>
       )}
+
+      {block.type === 'button' && (
+         <Dialog open={isButtonEditOpen} onOpenChange={setIsButtonEditOpen}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>Edit Button Properties</DialogTitle>
+              <DialogDescription>
+                Customize the text, appearance, and link for your button.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="btn-text" className="text-right">
+                  Button Text
+                </Label>
+                <Input
+                  id="btn-text"
+                  name="text"
+                  value={currentButtonProps.text || ''}
+                  onChange={handleButtonPropChange}
+                  className="col-span-3"
+                  placeholder="e.g., Learn More"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="btn-variant" className="text-right">
+                  Variant
+                </Label>
+                <Select
+                  value={currentButtonProps.variant || 'default'}
+                  onValueChange={(value) => handleButtonVariantChange(value as ButtonBlockProps['variant'])}
+                >
+                  <SelectTrigger id="btn-variant" className="col-span-3">
+                    <SelectValue placeholder="Select variant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default</SelectItem>
+                    <SelectItem value="destructive">Destructive</SelectItem>
+                    <SelectItem value="outline">Outline</SelectItem>
+                    <SelectItem value="secondary">Secondary</SelectItem>
+                    <SelectItem value="ghost">Ghost</SelectItem>
+                    <SelectItem value="link">Link</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="btn-href" className="text-right">
+                  URL (Optional)
+                </Label>
+                <Input
+                  id="btn-href"
+                  name="href"
+                  value={currentButtonProps.href || ''}
+                  onChange={handleButtonPropChange}
+                  className="col-span-3"
+                  placeholder="https://example.com"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="button" onClick={handleSaveButtonProps}>
+                Update Button
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
+
