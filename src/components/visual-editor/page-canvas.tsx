@@ -6,6 +6,21 @@ import React, { useState, useEffect } from 'react';
 import type { PageStructure, VisualBlock, VisualBlockPropsUnion } from '@/types';
 import { CanvasBlockRenderer } from './canvas-block-renderer';
 import { Input } from '@/components/ui/input'; // For inline editing
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
 
 interface PageCanvasProps {
   page: PageStructure | null;
@@ -17,11 +32,17 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
   const [editableTitle, setEditableTitle] = useState(page?.title || '');
 
   useEffect(() => {
-    // Update local editable title if the page prop changes from outside
     if (page) {
       setEditableTitle(page.title);
     }
   }, [page?.title]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   if (!page) {
     return (
@@ -50,19 +71,40 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
     if (event.key === 'Enter') {
       handleTitleBlur();
     } else if (event.key === 'Escape') {
-      setEditableTitle(page.title); // Revert changes
+      setEditableTitle(page.title); 
       setIsEditingTitle(false);
     }
   };
 
   const handleUpdateBlock = (blockId: string, newProps: Partial<VisualBlockPropsUnion>) => {
-    const updatedBlocks = page.blocks.map(block =>
-      block.id === blockId ? { ...block, props: { ...block.props, ...newProps } } : block
-    );
-    // This needs to handle nested blocks eventually for containers
+    // This function needs to recursively find and update nested blocks if necessary
+    const updateRecursively = (blocks: VisualBlock[]): VisualBlock[] => {
+      return blocks.map(block => {
+        if (block.id === blockId) {
+          return { ...block, props: { ...block.props, ...newProps } };
+        }
+        if (block.children) {
+          return { ...block, children: updateRecursively(block.children) };
+        }
+        return block;
+      });
+    };
+    const updatedBlocks = updateRecursively(page.blocks);
     onUpdatePageStructure({ ...page, blocks: updatedBlocks });
   };
-
+  
+  function handleDragEnd(event: DragEndEvent) {
+    const {active, over} = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = page.blocks.findIndex(block => block.id === active.id);
+      const newIndex = page.blocks.findIndex(block => block.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const updatedBlocks = arrayMove(page.blocks, oldIndex, newIndex);
+        onUpdatePageStructure({...page, blocks: updatedBlocks});
+      }
+    }
+  }
 
   return (
     <div className="p-4 md:p-6 bg-white dark:bg-neutral-900 shadow-lg rounded-lg border border-border min-h-[400px]">
@@ -85,17 +127,28 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
           {page.title}
         </h1>
       )}
-      <div>
-        {page.blocks.map(block => (
-          <CanvasBlockRenderer 
-            key={block.id} 
-            block={block} 
-            onUpdateBlock={handleUpdateBlock} 
-            pageStructure={page}
-            onUpdatePageStructure={onUpdatePageStructure}
-            />
-        ))}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={page.blocks.map(b => b.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div>
+            {page.blocks.map(block => (
+              <CanvasBlockRenderer 
+                key={block.id} 
+                block={block} 
+                onUpdateBlock={handleUpdateBlock} 
+                pageStructure={page}
+                onUpdatePageStructure={onUpdatePageStructure}
+                />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
