@@ -22,6 +22,13 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface CanvasBlockRendererProps {
   block: VisualBlock;
@@ -34,6 +41,7 @@ interface CanvasBlockRendererProps {
 export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageStructure, onUpdatePageStructure }: CanvasBlockRendererProps) {
   const [isEditingText, setIsEditingText] = useState(false);
   const [editableContent, setEditableContent] = useState(''); 
+  const [editableLevel, setEditableLevel] = useState<TextBlockProps['level']>('p');
 
   // State for image editing dialog
   const [isImageEditOpen, setIsImageEditOpen] = useState(false);
@@ -58,19 +66,31 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
 
   useEffect(() => {
     if (block.type === 'text') {
-      setEditableContent((block.props as TextBlockProps).text);
+      const props = block.props as TextBlockProps;
+      setEditableContent(props.text);
+      setEditableLevel(props.level || 'p');
     }
   }, [block.props, block.type]);
 
 
   const handleTextDoubleClick = () => {
     if (block.type === 'text') { 
+      const props = block.props as TextBlockProps;
+      setEditableContent(props.text); // Ensure fresh content on edit start
+      setEditableLevel(props.level || 'p'); // Ensure fresh level on edit start
       setIsEditingText(true);
     }
   };
 
-  const handleTextChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleTextContentChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditableContent(event.target.value);
+  };
+
+  const handleTextLevelChange = (newLevel: TextBlockProps['level']) => {
+    setEditableLevel(newLevel);
+    if (block.type === 'text') {
+      onUpdateBlock(block.id, { level: newLevel } as Partial<TextBlockProps>);
+    }
   };
 
   const handleTextBlur = () => {
@@ -79,17 +99,20 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
       if (currentProps.text !== editableContent) {
         onUpdateBlock(block.id, { text: editableContent } as Partial<TextBlockProps>);
       }
+      // Level is updated on change, so no need to update level here
     }
     setIsEditingText(false);
   };
   
-  const handleTextKeyDown = (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleTextKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && block.type === 'text') { 
       event.preventDefault(); 
       handleTextBlur();
     } else if (event.key === 'Escape') {
        if (block.type === 'text') {
-        setEditableContent((block.props as TextBlockProps).text); 
+        const props = block.props as TextBlockProps;
+        setEditableContent(props.text); 
+        setEditableLevel(props.level || 'p');
       }
       setIsEditingText(false);
     }
@@ -121,36 +144,46 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
       case 'text': {
         const props = block.props as TextBlockProps;
         const Tag = props.level || 'p';
+        
         if (isEditingText) {
-          if (Tag === 'p' || Tag === 'h4' || Tag === 'h5' || Tag === 'h6') {
-             return (
+          return (
+            <div className="my-2 space-y-2">
               <Textarea
                 value={editableContent}
-                onChange={handleTextChange}
+                onChange={handleTextContentChange}
                 onBlur={handleTextBlur}
                 onKeyDown={handleTextKeyDown}
-                className={`my-2 w-full min-h-[60px] resize-none text-base ${Tag !== 'p' ? 'font-bold' : ''} ${Tag === 'h1' ? 'text-4xl' : Tag === 'h2' ? 'text-3xl' : Tag === 'h3' ? 'text-2xl' : '' }`}
+                className={`w-full min-h-[80px] resize-y text-base ${Tag !== 'p' ? 'font-bold' : ''} ${Tag === 'h1' ? 'text-4xl' : Tag === 'h2' ? 'text-3xl' : Tag === 'h3' ? 'text-2xl' : Tag === 'h4' ? 'text-xl' : Tag === 'h5' ? 'text-lg' : '' }`}
                 autoFocus
               />
-            );
-          }
-          return ( 
-              <Input
-                type="text"
-                value={editableContent}
-                onChange={handleTextChange}
-                onBlur={handleTextBlur}
-                onKeyDown={handleTextKeyDown}
-                className={`my-2 w-full font-bold ${Tag === 'h1' ? 'text-4xl' : Tag === 'h2' ? 'text-3xl' : Tag === 'h3' ? 'text-2xl' : '' }`}
-                autoFocus
-              />
+              <div className="flex items-center gap-2">
+                <Label htmlFor={`level-select-${block.id}`} className="text-sm font-medium">Style:</Label>
+                <Select
+                  value={editableLevel}
+                  onValueChange={(value) => handleTextLevelChange(value as TextBlockProps['level'])}
+                >
+                  <SelectTrigger id={`level-select-${block.id}`} className="w-[180px]">
+                    <SelectValue placeholder="Select level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="p">Paragraph</SelectItem>
+                    <SelectItem value="h1">Heading 1</SelectItem>
+                    <SelectItem value="h2">Heading 2</SelectItem>
+                    <SelectItem value="h3">Heading 3</SelectItem>
+                    <SelectItem value="h4">Heading 4</SelectItem>
+                    <SelectItem value="h5">Heading 5</SelectItem>
+                    <SelectItem value="h6">Heading 6</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           );
         }
         return (
           <Tag 
             onDoubleClick={handleTextDoubleClick} 
             title="Double-click to edit"
-            className={`my-2 cursor-pointer hover:bg-muted/30 ${Tag !== 'p' ? 'font-bold' : ''} ${Tag === 'h1' ? 'text-4xl' : Tag === 'h2' ? 'text-3xl' : Tag === 'h3' ? 'text-2xl' : '' }`}
+            className={`my-2 cursor-pointer hover:bg-muted/30 ${Tag !== 'p' ? 'font-bold' : ''} ${Tag === 'h1' ? 'text-4xl' : Tag === 'h2' ? 'text-3xl' : Tag === 'h3' ? 'text-2xl' : Tag === 'h4' ? 'text-xl' : Tag === 'h5' ? 'text-lg' : '' }`}
           >
             {props.text}
           </Tag>
@@ -159,7 +192,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
       case 'image': {
         const props = block.props as ImageBlockProps;
         return (
-          <div className="my-4 relative group/image"> {/* Added group/image for edit button positioning if needed */}
+          <div className="my-4 relative group/image">
             <Image
               src={props.src || `https://placehold.co/${props.width || 600}x${props.height || 400}.png`}
               alt={props.alt || 'Placeholder image'}
@@ -255,6 +288,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
               <Edit size={16} />
             </Button>
           )}
+          {/* Future: Add edit button for other block types here if needed */}
           <Button 
             variant="ghost"
             size="icon"
@@ -311,7 +345,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
                   id="img-width"
                   name="width"
                   type="number"
-                  value={currentImageProps.width || ''}
+                  value={currentImageProps.width === undefined ? '' : currentImageProps.width}
                   onChange={handleImagePropChange}
                   className="col-span-3"
                   placeholder="e.g., 600"
@@ -325,7 +359,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
                   id="img-height"
                   name="height"
                   type="number"
-                  value={currentImageProps.height || ''}
+                  value={currentImageProps.height === undefined ? '' : currentImageProps.height}
                   onChange={handleImagePropChange}
                   className="col-span-3"
                   placeholder="e.g., 400"
