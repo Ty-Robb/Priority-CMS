@@ -4,16 +4,19 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { ContentPiece } from '@/types';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Edit } from 'lucide-react'; // Added Edit icon
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { mockContentData } from '@/lib/mock-data';
-import { PublicBlockRenderer } from '@/components/public/public-block-renderer'; // New import
+import { PublicBlockRenderer } from '@/components/public/public-block-renderer';
+import { useAuth } from '@/contexts/auth-context'; // Added for auth check
+import Link from 'next/link'; // Added for Link component
 
 export default function BlogPostPage() {
   const params = useParams();
   const router = useRouter();
+  const { isLoggedIn, isLoading: authIsLoading } = useAuth(); // Get auth state
   const [post, setPost] = useState<ContentPiece | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -33,7 +36,7 @@ export default function BlogPostPage() {
     }
   }, [params.id, mounted]);
 
-  if (!mounted || isLoading) {
+  if (!mounted || isLoading || authIsLoading) { // Include authIsLoading in loading check
     return (
       <div className="container mx-auto px-4 py-8 min-h-screen">
         <p>Loading post...</p>
@@ -76,9 +79,18 @@ export default function BlogPostPage() {
       </header>
       <main className="container mx-auto px-4 py-8">
         <article className="max-w-3xl mx-auto">
-          <Button variant="ghost" onClick={() => router.back()} className="mb-6 text-primary">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to list
-          </Button>
+          <div className="mb-6 flex justify-between items-center">
+            <Button variant="ghost" onClick={() => router.back()} className="text-primary">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to list
+            </Button>
+            {isLoggedIn && (
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/content-studio?editId=${post.id}`}>
+                  <Edit className="mr-2 h-4 w-4" /> Edit this Post
+                </Link>
+              </Button>
+            )}
+          </div>
           
           <Card className="overflow-hidden shadow-lg">
              <Image 
