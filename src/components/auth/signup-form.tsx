@@ -50,13 +50,17 @@ export function SignupForm() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // On successful signup:
-      login("fake-auth-token"); // Log the user in and redirect
-      // If login() successfully navigates, setIsSubmitting(false) might not be strictly needed
-      // as the component will unmount. It's set in catch for error cases.
+      login("fake-auth-token"); // Log the user in. AuthContext useEffect will handle redirection.
     } catch (e) {
       console.error("Signup process failed:", e);
       setError("Could not create account. Please try again.");
-      setIsSubmitting(false); // Reset loading state on error
+    } finally {
+      // Ensure the submitting state is reset even if navigation is slow or fails,
+      // or if login itself had an issue not caught above (though login now has its own try-catch).
+      // This makes the form usable again.
+      // A slight delay might be good if navigation is typically fast, to avoid UI flicker.
+      // However, for robustness, resetting it here is safer if navigation isn't guaranteed to unmount.
+      setIsSubmitting(false); 
     }
   }
 
@@ -124,3 +128,4 @@ export function SignupForm() {
     </Form>
   );
 }
+

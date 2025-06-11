@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -21,32 +22,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // Check for a token in localStorage to maintain session
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      setIsLoggedIn(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        setIsLoggedIn(true);
+      }
+    } catch (error) {
+      console.error("Error accessing localStorage:", error);
+      // Proceed without being logged in if localStorage is inaccessible
     }
     setIsLoading(false);
   }, []);
 
   useEffect(() => {
-    if (!isLoading && !isLoggedIn && pathname.startsWith('/dashboard')) {
-      router.push('/login');
-    }
-    if (!isLoading && isLoggedIn && (pathname === '/login' || pathname === '/signup')) {
-      router.push('/dashboard');
+    if (!isLoading) {
+      if (!isLoggedIn && pathname.startsWith('/dashboard')) {
+        router.push('/login');
+      }
+      if (isLoggedIn && (pathname === '/login' || pathname === '/signup')) {
+        router.push('/dashboard');
+      }
     }
   }, [isLoggedIn, isLoading, pathname, router]);
 
   const login = (token?: string) => {
-    if (token) {
-      localStorage.setItem('authToken', token);
+    try {
+      if (token) {
+        localStorage.setItem('authToken', token);
+      }
+      setIsLoggedIn(true);
+      // Redirection is now handled by the useEffect above
+    } catch (error) {
+      console.error("Failed to set auth token in localStorage or update login state:", error);
+      // Potentially inform user if this critical step fails
     }
-    setIsLoggedIn(true);
-    router.push('/dashboard');
   };
 
   const logout = () => {
-    localStorage.removeItem('authToken');
+    try {
+      localStorage.removeItem('authToken');
+    } catch (error) {
+      console.error("Error removing authToken from localStorage:", error);
+    }
     setIsLoggedIn(false);
     router.push('/login');
   };
@@ -65,3 +82,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
