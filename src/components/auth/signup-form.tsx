@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -92,6 +93,9 @@ export function SignupForm() {
           )}
         />
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+        <p className="text-xs text-muted-foreground">
+          For this prototype, any valid name, email, and password (min. 6 characters) will simulate a successful signup and log you in.
+        </p>
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
           Create Account
         </Button>
@@ -105,3 +109,4 @@ export function SignupForm() {
     </Form>
   );
 }
+
