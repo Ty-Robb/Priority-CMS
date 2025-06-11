@@ -49,6 +49,9 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
   const [isButtonEditOpen, setIsButtonEditOpen] = useState(false);
   const [currentButtonProps, setCurrentButtonProps] = useState<Partial<ButtonBlockProps>>({});
 
+  const [isQuoteEditOpen, setIsQuoteEditOpen] = useState(false);
+  const [currentQuoteProps, setCurrentQuoteProps] = useState<Partial<QuoteBlockProps>>({});
+
 
   const {
     attributes,
@@ -159,6 +162,23 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
   const handleSaveButtonProps = () => {
     onUpdateBlock(block.id, currentButtonProps);
     setIsButtonEditOpen(false);
+  };
+
+  const handleOpenQuoteEditDialog = () => {
+    if (block.type === 'quote') {
+      setCurrentQuoteProps(block.props as QuoteBlockProps);
+      setIsQuoteEditOpen(true);
+    }
+  };
+
+  const handleQuotePropChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setCurrentQuoteProps(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveQuoteProps = () => {
+    onUpdateBlock(block.id, currentQuoteProps);
+    setIsQuoteEditOpen(false);
   };
 
 
@@ -300,13 +320,18 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
           >
             <GripVertical size={16} />
           </Button>
-          {(block.type === 'image' || block.type === 'button') && (
+          {(block.type === 'image' || block.type === 'button' || block.type === 'quote') && (
             <Button
               variant="ghost"
               size="icon"
               className="p-1 text-muted-foreground hover:text-primary h-7 w-7"
               aria-label={`Edit ${block.type} properties`}
-              onClick={block.type === 'image' ? handleOpenImageEditDialog : handleOpenButtonEditDialog}
+              onClick={
+                block.type === 'image' ? handleOpenImageEditDialog :
+                block.type === 'button' ? handleOpenButtonEditDialog :
+                block.type === 'quote' ? handleOpenQuoteEditDialog :
+                undefined
+              }
             >
               <Edit size={16} />
             </Button>
@@ -481,6 +506,57 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageS
               </DialogClose>
               <Button type="button" onClick={handleSaveButtonProps}>
                 Update Button
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {block.type === 'quote' && (
+         <Dialog open={isQuoteEditOpen} onOpenChange={setIsQuoteEditOpen}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>Edit Quote Properties</DialogTitle>
+              <DialogDescription>
+                Modify the text and citation for your quote block.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="quote-text" className="text-right pt-2 self-start">
+                  Quote Text
+                </Label>
+                <Textarea
+                  id="quote-text"
+                  name="text"
+                  value={currentQuoteProps.text || ''}
+                  onChange={handleQuotePropChange}
+                  className="col-span-3 min-h-[100px]"
+                  placeholder="The main text of the quotation..."
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="quote-citation" className="text-right">
+                  Citation (Optional)
+                </Label>
+                <Input
+                  id="quote-citation"
+                  name="citation"
+                  value={currentQuoteProps.citation || ''}
+                  onChange={handleQuotePropChange}
+                  className="col-span-3"
+                  placeholder="e.g., Author Name, Book Title"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="button" onClick={handleSaveQuoteProps}>
+                Update Quote
               </Button>
             </DialogFooter>
           </DialogContent>
