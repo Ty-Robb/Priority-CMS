@@ -25,7 +25,7 @@ const initialMockPageStructure: PageStructure = {
     {
       id: 'block-img-hero',
       type: 'image',
-      props: { src: 'https://placehold.co/800x300.png', alt: 'A placeholder banner image', dataAiHint: "banner image" },
+      props: { src: 'https://placehold.co/800x300.png', alt: 'A placeholder banner image', dataAiHint: "banner image", width: 800, height: 300 },
     },
     {
       id: 'block-list-1',
@@ -75,33 +75,38 @@ const initialMockPageStructure: PageStructure = {
 
 function ContentStudioInner() {
   const searchParams = useSearchParams();
-  const [editorMode, setEditorMode] = useState<'form' | 'chat'>('form');
+  const [editorMode, setEditorMode] = useState<'form' | 'chat'>('form'); // Default for editing
   const [initialContent, setInitialContent] = useState<ContentPiece | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(true);
   const [pageTitle, setPageTitle] = useState("Content Studio");
-
-  // State for the visual editor's page structure
   const [currentPageStructure, setCurrentPageStructure] = useState<PageStructure | null>(initialMockPageStructure);
-
 
   const editId = searchParams.get('editId');
 
   useEffect(() => {
+    setIsLoadingContent(true);
     if (editId) {
       setPageTitle("Edit Content");
       const contentToEdit = mockContentData.find(content => content.id === editId);
       if (contentToEdit) {
         setInitialContent(contentToEdit);
-        // In a real scenario, you might fetch or convert 'contentToEdit.body' into a PageStructure
-        // For now, we'll reset to the mock structure or a blank one if editing.
-        // Or, ideally, load a PageStructure associated with contentToEdit.id
-        setCurrentPageStructure(initialMockPageStructure); // Or fetch/derive
+        // In a real scenario, load PageStructure associated with contentToEdit.id
+        // For now, if editing, let's assume we might want to start with the form editor or a saved structure.
+        // For simplicity, resetting to mock, but this should ideally load the *actual* saved visual structure if available.
+        setCurrentPageStructure(initialMockPageStructure); 
       } else {
         console.warn(`Content with ID ${editId} not found for editing.`);
+        // If editId is invalid, treat as new content creation.
+        setPageTitle("Create New Content");
+        setInitialContent(null);
+        setEditorMode('chat'); // Force chat mode for new content
+        setCurrentPageStructure(initialMockPageStructure); // Reset to mock for new content
       }
+      setEditorMode('form'); // Default to form editor when editing existing content
     } else {
-      setPageTitle("Content Studio");
+      setPageTitle("Create New Content");
       setInitialContent(null);
+      setEditorMode('chat'); // Default to chat/visual editor for new content
       setCurrentPageStructure(initialMockPageStructure); // Reset to mock for new content
     }
     setIsLoadingContent(false);
@@ -109,9 +114,11 @@ function ContentStudioInner() {
 
   const handleUpdatePageStructure = (updatedPage: PageStructure) => {
     setCurrentPageStructure(updatedPage);
+    // Here you might also want to convert this PageStructure back to a string for the 'body'
+    // if the ContentForm is to be updated live from visual editor changes, or on save.
   };
 
-  if (isLoadingContent && editId) {
+  if (isLoadingContent && editId) { // Show loading skeleton only if trying to load existing content
     return (
       <div>
         <Skeleton className="h-10 w-1/3 mb-8" />
@@ -138,15 +145,19 @@ function ContentStudioInner() {
     <div>
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">
         <h1 className="font-headline text-3xl font-bold text-primary">{pageTitle}</h1>
-        <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as 'form' | 'chat')} className="w-full sm:w-auto">
-          <TabsList className="grid w-full grid-cols-2 sm:w-auto">
-            <TabsTrigger value="form">Form Editor</TabsTrigger>
-            <TabsTrigger value="chat">Visual/Chat Editor</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Only show tabs if an editId is present (i.e., editing existing content) */}
+        {editId && (
+          <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as 'form' | 'chat')} className="w-full sm:w-auto">
+            <TabsList className="grid w-full grid-cols-2 sm:w-auto">
+              <TabsTrigger value="form">Form Editor</TabsTrigger>
+              <TabsTrigger value="chat">Visual/Chat Editor</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
       </div>
 
-      {editorMode === 'form' && (
+      {/* If not editing (i.e. new content), editorMode will be 'chat' by default and ContentForm won't show */}
+      {editorMode === 'form' && editId && ( // ContentForm only shows if editing AND in form mode
         <div className="grid grid-cols-1 gap-8 items-start">
           <div>
             <ContentForm initialContent={initialContent || undefined} />
@@ -154,6 +165,7 @@ function ContentStudioInner() {
         </div>
       )}
 
+      {/* Visual/Chat editor shows if creating new OR if editing and chat mode is selected */}
       {editorMode === 'chat' && (
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">
@@ -162,8 +174,7 @@ function ContentStudioInner() {
                 <CardTitle className="font-headline text-xl">AI Content Assistant</CardTitle>
               </CardHeader>
               <CardContent>
-                 {/* ChatInterface might update currentPageStructure via setCurrentPageStructure passed as a prop if needed */}
-                <ChatInterface setCurrentPageStructure={setCurrentPageStructure} />
+                <ChatInterface setCurrentPageStructure={handleUpdatePageStructure} />
               </CardContent>
             </Card>
           </div>
