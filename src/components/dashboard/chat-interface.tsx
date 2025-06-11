@@ -7,12 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Paperclip, Send, User, Bot } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { ChatMessage, PageStructure } from '@/types'; // Added PageStructure
+import type { ChatMessage, PageStructure, VisualBlock } from '@/types'; // Added PageStructure
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 // Ensure the path is correct for your project structure
 import { generatePageContent, type GeneratePageContentOutput } from '@/ai/flows/generate-page-content'; 
-// Assuming generatePageContent now returns/aligns with PageStructure or can be mapped to it.
 
 interface ChatInterfaceProps {
   setCurrentPageStructure: Dispatch<SetStateAction<PageStructure | null>>;
@@ -51,32 +50,40 @@ export function ChatInterface({ setCurrentPageStructure }: ChatInterfaceProps) {
 
     if (isCreatePageRequest) {
       try {
-        // The AI flow returns GeneratePageContentOutput
         const aiResponse: GeneratePageContentOutput = await generatePageContent({ prompt: currentInput });
 
-        // Adapt GeneratePageContentOutput to PageStructure
+        const newBlocks: VisualBlock[] = [];
+        aiResponse.sections.forEach((section, index) => {
+          if (section.sectionTitle) {
+            newBlocks.push({
+              id: `block-title-${Date.now()}-${index}`,
+              type: 'text',
+              props: { text: section.sectionTitle, level: 'h2' },
+            });
+          }
+          if (section.sectionContent) {
+            newBlocks.push({
+              id: `block-content-${Date.now()}-${index}`,
+              type: 'text',
+              props: { text: section.sectionContent, level: 'p' },
+            });
+          }
+        });
+        
         const newPageStructure: PageStructure = {
-          id: `page-${Date.now()}`, // Generate a unique ID
+          id: `page-${Date.now()}`,
           title: aiResponse.pageTitle,
-          blocks: aiResponse.sections.map((section, index) => ({
-            id: `block-${Date.now()}-${index}`, // Generate unique IDs for blocks
-            type: 'text', // Assuming sections map to text blocks for now
-            props: { text: `${section.sectionTitle}\n\n${section.sectionContent}`, level: index === 0 ? 'h2' : 'p' }, // Combine title and content, or handle separately
-          })),
+          blocks: newBlocks,
         };
-        setCurrentPageStructure(newPageStructure); // Update the visual canvas
+        setCurrentPageStructure(newPageStructure);
 
-        // Display confirmation in chat
-        const aiGeneratedMessages: ChatMessage[] = [];
-        aiGeneratedMessages.push({
+        const aiConfirmationMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          text: `Okay, I've drafted a page titled: "${aiResponse.pageTitle}". You can see it on the canvas.`,
+          text: `Okay, I've drafted a page titled: "${aiResponse.pageTitle}". You can see it on the canvas and edit it there.`,
           sender: 'ai',
           timestamp: new Date().toISOString(),
-        });
-        // Optionally, you could summarize or list sections in chat too
-        // aiResponse.sections.forEach((section, index) => { ... });
-        setMessages((prevMessages) => [...prevMessages, ...aiGeneratedMessages]);
+        };
+        setMessages((prevMessages) => [...prevMessages, aiConfirmationMessage]);
 
       } catch (error) {
         console.error("Error generating page content:", error);
@@ -87,14 +94,15 @@ export function ChatInterface({ setCurrentPageStructure }: ChatInterfaceProps) {
           timestamp: new Date().toISOString(),
         };
         setMessages((prevMessages) => [...prevMessages, errorMessage]);
-        setCurrentPageStructure(null); // Clear canvas on error
+        // Optionally clear canvas on error, or leave it as is
+        // setCurrentPageStructure(null); 
       }
     } else {
       // Simulate standard AI response for other queries
       await new Promise(resolve => setTimeout(resolve, 1000));
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: "I'm processing your request. How can I help further with your content or document analysis?",
+        text: "I'm processing your request. How can I help further with your content or document analysis? If you'd like to generate a page, try 'Create a page about...'.",
         sender: 'ai',
         timestamp: new Date().toISOString(),
       };
@@ -188,3 +196,4 @@ export function ChatInterface({ setCurrentPageStructure }: ChatInterfaceProps) {
     </div>
   );
 }
+
