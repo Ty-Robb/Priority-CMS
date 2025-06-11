@@ -7,7 +7,7 @@ import type { PageStructure, VisualBlock, VisualBlockPropsUnion } from '@/types'
 import { CanvasBlockRenderer } from './canvas-block-renderer';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react'; // Added Loader2
 import {
   DndContext,
   closestCenter,
@@ -23,21 +23,23 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable';
+import { addTextBlockToPage } from '@/ai/flows/add-text-block-to-page-flow'; // Import the AI flow
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface PageCanvasProps {
   page: PageStructure | null;
   onUpdatePageStructure: (updatedPage: PageStructure) => void;
-  initialTitle?: string; // Changed from pageTitle to initialTitle for clarity
-  onUpdateTitle: (newTitle: string) => void; // Callback to update parent's title state
+  initialTitle?: string;
+  onUpdateTitle: (newTitle: string) => void;
 }
 
 export function PageCanvas({ page, onUpdatePageStructure, initialTitle, onUpdateTitle }: PageCanvasProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  // editableTitle is the local state for the input field when editing title
   const [editableTitle, setEditableTitle] = useState(initialTitle || page?.title || '');
+  const [isAddingTextBlock, setIsAddingTextBlock] = useState(false); // Loading state for AI
+  const { toast } = useToast(); // Initialize toast
 
   useEffect(() => {
-    // Sync from prop if page or initialTitle changes and not currently editing
     if (!isEditingTitle) {
       setEditableTitle(initialTitle || page?.title || 'Untitled Page');
     }
@@ -63,7 +65,7 @@ export function PageCanvas({ page, onUpdatePageStructure, initialTitle, onUpdate
     if (page && page.title !== editableTitle) {
       onUpdatePageStructure({ ...page, title: editableTitle });
     }
-    onUpdateTitle(editableTitle); // Update parent's title state
+    onUpdateTitle(editableTitle);
   };
 
   const handleTitleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -72,7 +74,6 @@ export function PageCanvas({ page, onUpdatePageStructure, initialTitle, onUpdate
     } else if (event.key === 'Escape') {
       setEditableTitle(page?.title || initialTitle || ''); 
       setIsEditingTitle(false);
-      // No need to call onUpdateTitle if escaping, keep original
     }
   };
 
@@ -122,35 +123,67 @@ export function PageCanvas({ page, onUpdatePageStructure, initialTitle, onUpdate
     onUpdatePageStructure({ ...page, blocks: updatedBlocks });
   }, [page, onUpdatePageStructure]);
 
-  const handleAddNewTextBlock = useCallback(() => {
-    const newBlock: VisualBlock = {
-      id: `block-text-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      type: 'text',
-      props: { text: 'New paragraph. Double-click to edit me!', level: 'p' },
-    };
-    if (page) {
-      onUpdatePageStructure({ ...page, blocks: [...page.blocks, newBlock] });
-    } else {
-      const newPage: PageStructure = {
-        id: `page-${Date.now()}`,
-        title: editableTitle || "New Page Title", // Use current editableTitle or default
-        blocks: [newBlock],
-      };
-      onUpdatePageStructure(newPage);
-      if (!initialTitle) onUpdateTitle(newPage.title); // Update parent title if it was not set
-    }
-  }, [page, onUpdatePageStructure, editableTitle, initialTitle, onUpdateTitle]);
+  const handleAddNewTextBlock = async () => {
+    setIsAddingTextBlock(true);
+    toast({ title: "AI is adding a text block...", description: "Please wait a moment." });
 
-  if (!page) {
+    let basePageStructure = page;
+    if (!basePageStructure) {
+      // If no page exists, create a minimal structure to pass to the AI
+      basePageStructure = {
+        id: `page-${Date.now()}`,
+        title: editableTitle || "New Page Title",
+        blocks: [],
+      };
+      if (!initialTitle) onUpdateTitle(basePageStructure.title);
+    }
+    
+    const newParagraphText = "New AI-added paragraph. Double-click me to edit!";
+
+    try {
+      const result = await addTextBlockToPage({
+        currentPageStructure: basePageStructure,
+        paragraphText: newParagraphText,
+      });
+      onUpdatePageStructure(result.updatedPageStructure);
+      toast({ title: "Text Block Added by AI!", description: "The new block has been appended to your page." });
+    } catch (error) {
+      console.error("Error adding text block with AI:", error);
+      toast({
+        title: "AI Error",
+        description: "Could not add the text block. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingTextBlock(false);
+    }
+  };
+
+  if (!page && !isAddingTextBlock) { // Show placeholder only if not currently adding a block to a new page
     return (
       <div className="p-8 border border-dashed border-muted-foreground rounded-lg text-center text-muted-foreground min-h-[400px] flex flex-col items-center justify-center bg-white dark:bg-neutral-900">
         <p className="mb-4">No page structure. Generate content via chat or add your first block.</p>
-        <Button onClick={handleAddNewTextBlock} variant="outline">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add First Text Block
+        <Button onClick={handleAddNewTextBlock} variant="outline" disabled={isAddingTextBlock}>
+          {isAddingTextBlock ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+          Add First Text Block (AI)
         </Button>
       </div>
     );
   }
+  
+  // If page is null but we are in the process of adding the first block
+  if (!page && isAddingTextBlock) {
+    return (
+      <div className="p-8 border border-dashed border-muted-foreground rounded-lg text-center text-muted-foreground min-h-[400px] flex flex-col items-center justify-center bg-white dark:bg-neutral-900">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p>AI is creating your first block...</p>
+      </div>
+    );
+  }
+  
+  // This guard is now safe because the above conditions handle `page` being null.
+  if (!page) return null; 
+
 
   return (
     <div className="p-4 md:p-6 bg-white dark:bg-neutral-900 shadow-lg rounded-lg border border-border min-h-[400px]">
@@ -189,16 +222,17 @@ export function PageCanvas({ page, onUpdatePageStructure, initialTitle, onUpdate
                 block={block} 
                 onUpdateBlock={handleUpdateBlock}
                 onDeleteBlock={handleDeleteBlock} 
-                pageStructure={page} // Pass full structure for context if needed by renderer (though not used yet)
-                onUpdatePageStructure={onUpdatePageStructure} // Pass down for potential deep updates (not used yet by renderer)
+                pageStructure={page}
+                onUpdatePageStructure={onUpdatePageStructure}
                 />
             ))}
           </div>
         </SortableContext>
       </DndContext>
       <div className="mt-6 text-center">
-        <Button onClick={handleAddNewTextBlock} variant="outline" className="w-full sm:w-auto">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add New Text Block to End
+        <Button onClick={handleAddNewTextBlock} variant="outline" className="w-full sm:w-auto" disabled={isAddingTextBlock}>
+          {isAddingTextBlock ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+           Add New Text Block (AI)
         </Button>
       </div>
     </div>
