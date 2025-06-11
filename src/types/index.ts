@@ -1,3 +1,4 @@
+
 export interface ContentPiece {
   id: string;
   title: string;
@@ -15,4 +16,12 @@ export interface MediaFile {
   type: 'image' | 'document'; // Example types
   size: number; // in bytes
   uploadedAt: string;
+  dataAiHint?: string; 
+}
+
+export interface ChatMessage {
+  id: string;
+  text: string;
+  sender: 'user' | 'ai' | 'system';
+  timestamp: string; // ISO 8601 date string
 }

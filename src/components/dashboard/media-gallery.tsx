@@ -41,6 +41,7 @@ export function MediaGallery() {
       type: selectedFile.type.startsWith('image/') ? 'image' : 'document',
       size: selectedFile.size,
       uploadedAt: new Date().toISOString(),
+      dataAiHint: selectedFile.type.startsWith('image/') ? "uploaded image" : "uploaded document",
     };
     setMediaFiles(prevFiles => [newFile, ...prevFiles]);
     setSelectedFile(null); // Reset file input
@@ -91,7 +92,7 @@ export function MediaGallery() {
                     width={300}
                     height={200}
                     className="aspect-[3/2] w-full object-cover transition-transform group-hover:scale-105"
-                    data-ai-hint={(file as any).dataAiHint || "placeholder image"}
+                    data-ai-hint={file.dataAiHint || "placeholder image"}
                   />
                 ) : (
                   <div className="aspect-[3/2] w-full bg-muted flex items-center justify-center">
