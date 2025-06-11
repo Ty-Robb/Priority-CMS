@@ -12,62 +12,31 @@ import type { ContentPiece, PageStructure } from '@/types';
 import { mockContentData } from '@/lib/mock-data';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Hardcoded example PageStructure for initial display when *editing*
-const initialMockPageStructureForEditing: PageStructure = {
-  id: 'mock-page-1',
-  title: 'My Visually Edited Page Title',
+// Hardcoded example PageStructure for initial display when *editing* content that *doesn't* have its own pageStructure
+const fallbackMockPageStructureForEditing: PageStructure = {
+  id: 'mock-page-fallback-1',
+  title: 'My Visually Edited Page Title (Fallback)',
   blocks: [
     {
-      id: 'block-1',
+      id: 'block-fallback-1',
       type: 'text',
-      props: { text: 'Welcome to this visually constructed page! This is a paragraph of text.', level: 'p' },
+      props: { text: 'Welcome! This content is being structured. This is a paragraph of text.', level: 'p' },
     },
     {
-      id: 'block-img-hero',
+      id: 'block-fallback-img-hero',
       type: 'image',
       props: { src: 'https://placehold.co/800x300.png', alt: 'A placeholder banner image', dataAiHint: "banner image", width: 800, height: 300 },
     },
     {
-      id: 'block-list-1',
+      id: 'block-fallback-list-1',
       type: 'list',
       props: {
         ordered: false,
         items: [
-          { id: 'item-1', text: 'First feature item' },
-          { id: 'item-2', text: 'Second amazing point' },
-          { id: 'item-3', text: 'Third important detail' },
+          { id: 'item-fallback-1', text: 'First feature item' },
+          { id: 'item-fallback-2', text: 'Second amazing point' },
         ],
       },
-    },
-    {
-      id: 'block-container-1',
-      type: 'container',
-      props: {},
-      children: [
-        {
-          id: 'block-c1-text1',
-          type: 'text',
-          props: { text: 'This text is inside a container.', level: 'h3' },
-        },
-        {
-          id: 'block-c1-button1',
-          type: 'button',
-          props: { text: 'Click Me!', variant: 'secondary' },
-        },
-      ],
-    },
-    {
-      id: 'block-quote-1',
-      type: 'quote',
-      props: {
-        text: "The only way to do great work is to love what you do.",
-        citation: "Steve Jobs"
-      }
-    },
-     {
-      id: 'block-para-2',
-      type: 'text',
-      props: { text: 'Another paragraph to demonstrate structure and new block types.', level: 'p' },
     },
   ],
 };
@@ -75,7 +44,7 @@ const initialMockPageStructureForEditing: PageStructure = {
 
 function ContentStudioInner() {
   const searchParams = useSearchParams();
-  const [editorMode, setEditorMode] = useState<'form' | 'chat'>('form'); // Default to 'form'
+  const [editorMode, setEditorMode] = useState<'form' | 'chat'>('form');
   const [initialContent, setInitialContent] = useState<ContentPiece | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(true);
   const [pageTitle, setPageTitle] = useState("Content Studio");
@@ -86,24 +55,27 @@ function ContentStudioInner() {
   useEffect(() => {
     setIsLoadingContent(true);
     if (editId) {
-      setPageTitle("Edit Content");
       const contentToEdit = mockContentData.find(content => content.id === editId);
       if (contentToEdit) {
+        setPageTitle(`Edit Content: ${contentToEdit.title}`);
         setInitialContent(contentToEdit);
-        setCurrentPageStructure(initialMockPageStructureForEditing);
+        // Load the post's actual pageStructure if it exists, otherwise use the fallback
+        setCurrentPageStructure(contentToEdit.pageStructure || fallbackMockPageStructureForEditing);
+        setEditorMode('form'); // Default to form editor when editing
       } else {
+        // Content ID not found, treat as new content creation but show an error/warning message
         console.warn(`Content with ID ${editId} not found for editing.`);
         setPageTitle("Create New Content (ID not found)");
         setInitialContent(null);
-        setCurrentPageStructure(null); 
+        setCurrentPageStructure(null); // No structure if ID is invalid
+        setEditorMode('chat'); // Default to chat for effectively new content
       }
-      setEditorMode('form'); 
     } else {
       // Creating new content
       setPageTitle("Create New Content");
       setInitialContent(null);
-      setEditorMode('chat'); 
-      setCurrentPageStructure(null); 
+      setCurrentPageStructure(null); // Start with no structure for new content
+      setEditorMode('chat'); // Default to chat editor for new content
     }
     setIsLoadingContent(false);
   }, [editId]);
@@ -112,7 +84,7 @@ function ContentStudioInner() {
     setCurrentPageStructure(updatedPage);
   };
 
-  if (isLoadingContent && editId) {
+  if (isLoadingContent) { // Simplified loading state check
     return (
       <div>
         <Skeleton className="h-10 w-1/3 mb-8" />
@@ -137,7 +109,6 @@ function ContentStudioInner() {
     <div>
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">
         <h1 className="font-headline text-3xl font-bold text-primary">{pageTitle}</h1>
-        {/* Only show tabs if an editId is present OR if editorMode is 'form' (which implies editId or future new content form mode) */}
         {(editId || editorMode === 'form') && (
           <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as 'form' | 'chat')} className="w-full sm:w-auto">
             <TabsList className="grid w-full grid-cols-2 sm:w-auto">
@@ -148,17 +119,14 @@ function ContentStudioInner() {
         )}
       </div>
 
-      {/* Render ContentForm if editorMode is 'form'. This mode is active when editing or could be for a new form-based creation if editId is null. */}
       {editorMode === 'form' && (
         <div className="grid grid-cols-1 gap-8 items-start">
           <div>
-            {/* Pass initialContent if editing, otherwise undefined for a new form entry */}
             <ContentForm initialContent={initialContent || undefined} />
           </div>
         </div>
       )}
       
-      {/* Render Chat/Visual editor if editorMode is 'chat'. This is default for new content if editId is null. */}
       {editorMode === 'chat' && (
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">
