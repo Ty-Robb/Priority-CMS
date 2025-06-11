@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview Zod schemas for representing the visual page structure.
  * These schemas are used by Genkit flows to ensure type safety and guide AI models.

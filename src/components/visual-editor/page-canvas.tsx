@@ -5,7 +5,9 @@ import type { KeyboardEvent } from 'react';
 import React, { useState, useEffect } from 'react';
 import type { PageStructure, VisualBlock, VisualBlockPropsUnion } from '@/types';
 import { CanvasBlockRenderer } from './canvas-block-renderer';
-import { Input } from '@/components/ui/input'; // For inline editing
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button'; // Added for "Add Block" button
+import { PlusCircle } from 'lucide-react'; // Icon for "Add Block" button
 import {
   DndContext,
   closestCenter,
@@ -34,8 +36,10 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
   useEffect(() => {
     if (page) {
       setEditableTitle(page.title);
+    } else {
+      setEditableTitle(''); // Clear title if page is null
     }
-  }, [page?.title]);
+  }, [page]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -43,14 +47,6 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  if (!page) {
-    return (
-      <div className="p-8 border border-dashed border-muted-foreground rounded-lg text-center text-muted-foreground">
-        No page structure to display. Generate content using the chat or load a page.
-      </div>
-    );
-  }
 
   const handleTitleDoubleClick = () => {
     setIsEditingTitle(true);
@@ -71,13 +67,13 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
     if (event.key === 'Enter') {
       handleTitleBlur();
     } else if (event.key === 'Escape') {
-      setEditableTitle(page.title); 
+      setEditableTitle(page?.title || ''); 
       setIsEditingTitle(false);
     }
   };
 
   const handleUpdateBlock = (blockId: string, newProps: Partial<VisualBlockPropsUnion>) => {
-    // This function needs to recursively find and update nested blocks if necessary
+    if (!page) return;
     const updateRecursively = (blocks: VisualBlock[]): VisualBlock[] => {
       return blocks.map(block => {
         if (block.id === blockId) {
@@ -94,6 +90,7 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
   };
   
   function handleDragEnd(event: DragEndEvent) {
+    if (!page) return;
     const {active, over} = event;
     if (over && active.id !== over.id) {
       const oldIndex = page.blocks.findIndex(block => block.id === active.id);
@@ -104,6 +101,53 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
         onUpdatePageStructure({...page, blocks: updatedBlocks});
       }
     }
+  }
+
+  const handleDeleteBlock = (blockId: string) => {
+    if (!page) return;
+    // This needs to recursively find and delete nested blocks if necessary for container blocks
+    // For now, focus on top-level. A more robust solution would handle children.
+    const filterRecursively = (blocks: VisualBlock[]): VisualBlock[] => {
+      const filtered = blocks.filter(block => block.id !== blockId);
+      return filtered.map(block => {
+        if (block.children) {
+          return { ...block, children: filterRecursively(block.children) };
+        }
+        return block;
+      });
+    };
+    const updatedBlocks = filterRecursively(page.blocks);
+    onUpdatePageStructure({ ...page, blocks: updatedBlocks });
+  };
+
+  const handleAddNewTextBlock = () => {
+    const newBlock: VisualBlock = {
+      id: `block-text-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      type: 'text',
+      props: { text: 'New paragraph. Double-click to edit me!', level: 'p' },
+    };
+    if (page) {
+      onUpdatePageStructure({ ...page, blocks: [...page.blocks, newBlock] });
+    } else {
+      // If there's no page, create one with this block
+      onUpdatePageStructure({
+        id: `page-${Date.now()}`,
+        title: 'New Page Title',
+        blocks: [newBlock],
+      });
+      setEditableTitle('New Page Title'); // Set title for the new page
+    }
+  };
+
+  if (!page) {
+    return (
+      <div className="p-8 border border-dashed border-muted-foreground rounded-lg text-center text-muted-foreground min-h-[400px] flex flex-col items-center justify-center">
+        <p className="mb-4">No page structure to display. Generate content using the chat or add your first block.</p>
+        <Button onClick={handleAddNewTextBlock} variant="outline">
+          <PlusCircle className="mr-2 h-4 w-4" /> Add First Text Block
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -124,7 +168,7 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
           onDoubleClick={handleTitleDoubleClick}
           title="Double-click to edit title"
         >
-          {page.title}
+          {editableTitle || "Untitled Page"}
         </h1>
       )}
       <DndContext
@@ -141,7 +185,8 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
               <CanvasBlockRenderer 
                 key={block.id} 
                 block={block} 
-                onUpdateBlock={handleUpdateBlock} 
+                onUpdateBlock={handleUpdateBlock}
+                onDeleteBlock={handleDeleteBlock} 
                 pageStructure={page}
                 onUpdatePageStructure={onUpdatePageStructure}
                 />
@@ -149,6 +194,11 @@ export function PageCanvas({ page, onUpdatePageStructure }: PageCanvasProps) {
           </div>
         </SortableContext>
       </DndContext>
+      <div className="mt-6 text-center">
+        <Button onClick={handleAddNewTextBlock} variant="outline" className="w-full sm:w-auto">
+          <PlusCircle className="mr-2 h-4 w-4" /> Add New Text Block to End
+        </Button>
+      </div>
     </div>
   );
 }

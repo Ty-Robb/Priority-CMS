@@ -10,16 +10,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react'; // Optional: for a drag handle
+import { GripVertical, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface CanvasBlockRendererProps {
   block: VisualBlock;
   onUpdateBlock: (blockId: string, newProps: Partial<VisualBlockPropsUnion>) => void;
+  onDeleteBlock: (blockId: string) => void; // New prop for deleting
   pageStructure: PageStructure; 
   onUpdatePageStructure: (updatedPage: PageStructure) => void; 
 }
 
-export function CanvasBlockRenderer({ block, onUpdateBlock, pageStructure, onUpdatePageStructure }: CanvasBlockRendererProps) {
+export function CanvasBlockRenderer({ block, onUpdateBlock, onDeleteBlock, pageStructure, onUpdatePageStructure }: CanvasBlockRendererProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editableContent, setEditableContent] = useState(''); 
 
@@ -37,7 +39,7 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, pageStructure, onUpd
     transition,
     opacity: isDragging ? 0.7 : 1,
     boxShadow: isDragging ? '0 0 10px rgba(0,0,0,0.2)' : 'none',
-    position: 'relative' as 'relative', // Added for positioning drag handle
+    position: 'relative' as 'relative',
   };
 
   useEffect(() => {
@@ -153,11 +155,11 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, pageStructure, onUpd
         return (
           <div className="my-2 p-4 border border-dashed border-muted rounded-md">
             {block.children && block.children.map(childBlock => (
-              // Note: Dragging children within a container is not yet supported by this setup
               <CanvasBlockRenderer 
                 key={childBlock.id} 
                 block={childBlock} 
                 onUpdateBlock={onUpdateBlock}
+                onDeleteBlock={onDeleteBlock} // Pass down delete for nested (though not fully supported for nested DnD yet)
                 pageStructure={pageStructure}
                 onUpdatePageStructure={onUpdatePageStructure}
               />
@@ -196,14 +198,27 @@ export function CanvasBlockRenderer({ block, onUpdateBlock, pageStructure, onUpd
 
   return (
     <div ref={setNodeRef} style={style} className="mb-2 relative group bg-background p-2 rounded hover:shadow-md transition-shadow">
-       <button 
-        {...attributes} 
-        {...listeners}
-        className="absolute top-1/2 -left-3 transform -translate-y-1/2 p-1 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10"
-        aria-label="Drag to reorder block"
-      >
-        <GripVertical size={18} />
-      </button>
+       <div className="absolute top-1/2 -left-8 transform -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity z-10">
+          <Button 
+            {...attributes} 
+            {...listeners}
+            variant="ghost"
+            size="icon"
+            className="p-1 text-muted-foreground hover:text-primary cursor-grab active:cursor-grabbing h-7 w-7"
+            aria-label="Drag to reorder block"
+          >
+            <GripVertical size={16} />
+          </Button>
+          <Button 
+            variant="ghost"
+            size="icon"
+            className="p-1 text-muted-foreground hover:text-destructive h-7 w-7"
+            aria-label="Delete block"
+            onClick={() => onDeleteBlock(block.id)}
+          >
+            <Trash2 size={16} />
+          </Button>
+       </div>
       {renderBlockContent()}
     </div>
   );
