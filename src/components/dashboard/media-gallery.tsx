@@ -33,7 +33,10 @@ export function MediaGallery() {
 
   // Fetch media files from Firebase Storage
   const fetchMedia = async () => {
-    if (!storage) return;
+    if (!storage || !user) { // Ensure user is available for user-specific paths
+        setIsLoadingMedia(false); // Stop loading if no user or storage
+        return;
+    }
     setIsLoadingMedia(true);
     const storagePath = getStoragePath();
     const listRef = ref(storage, storagePath);
@@ -48,10 +51,10 @@ export function MediaGallery() {
           id: itemRef.name, // Using name as ID, could be more robust
           name: itemRef.name,
           url,
-          type: itemRef.name.match(/\.(jpeg|jpg|gif|png)$/) != null ? 'image' : 'document',
+          type: itemRef.name.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) != null ? 'image' : 'document',
           size: 0, // Firebase Storage doesn't easily provide size in listAll, need metadata or store separately
           uploadedAt: new Date().toISOString(), // Placeholder, ideally store upload date in metadata or DB
-          dataAiHint: itemRef.name.match(/\.(jpeg|jpg|gif|png)$/) != null ? 'uploaded image' : 'uploaded document',
+          dataAiHint: itemRef.name.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) != null ? 'uploaded image' : 'uploaded document',
         } as MediaFile;
       });
       const files = await Promise.all(filesPromises);
@@ -65,7 +68,12 @@ export function MediaGallery() {
   };
 
   useEffect(() => {
-    fetchMedia();
+    if(user){ // Only fetch media if user is logged in
+        fetchMedia();
+    } else {
+        setMediaFiles([]); // Clear media files if user logs out
+        setIsLoadingMedia(false);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]); // Refetch if user changes
 
@@ -82,6 +90,10 @@ export function MediaGallery() {
     }
     if (!storage) {
       toast({ title: "Storage Error", description: "Firebase Storage is not initialized.", variant: "destructive"});
+      return;
+    }
+    if (!user) {
+      toast({ title: "Authentication Error", description: "You must be logged in to upload files.", variant: "destructive"});
       return;
     }
     setIsUploading(true);
@@ -113,8 +125,8 @@ export function MediaGallery() {
   };
 
   const handleDelete = async (fileName: string) => {
-    if (!storage) return;
-    if (!window.confirm(`Are you sure you want to delete ${fileName}?`)) return;
+    if (!storage || !user) return;
+    if (!window.confirm(\`Are you sure you want to delete ${fileName}?\`)) return;
 
     const storagePath = getStoragePath();
     const fileRef = ref(storage, `${storagePath}/${fileName}`);
@@ -140,12 +152,13 @@ export function MediaGallery() {
           <CardTitle className="font-headline text-2xl">Upload New Media</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col sm:flex-row items-center gap-4">
-          <Input id="file-upload" type="file" onChange={handleFileChange} className="flex-grow" disabled={isUploading}/>
-          <Button onClick={handleUpload} disabled={!selectedFile || isUploading} className="w-full sm:w-auto">
+          <Input id="file-upload" type="file" onChange={handleFileChange} className="flex-grow" disabled={isUploading || !user}/>
+          <Button onClick={handleUpload} disabled={!selectedFile || isUploading || !user} className="w-full sm:w-auto">
             {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
              {isUploading ? 'Uploading...' : 'Upload File'}
           </Button>
         </CardContent>
+         {!user && <p className="text-sm text-muted-foreground p-4 text-center">Please log in to upload and manage media.</p>}
       </Card>
 
       <div>
@@ -155,8 +168,10 @@ export function MediaGallery() {
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
             <p className="text-muted-foreground">Loading media...</p>
           </div>
+        ) : !user ? (
+            <p className="text-muted-foreground text-center py-8">Log in to view your media files.</p>
         ) : mediaFiles.length === 0 ? (
-          <p className="text-muted-foreground">No media files yet. Upload some!</p>
+          <p className="text-muted-foreground text-center py-8">No media files yet. Upload some!</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {mediaFiles.map(file => (
