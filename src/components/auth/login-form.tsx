@@ -5,7 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import Link from 'next/link';
-
+import { useState } from "react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -16,8 +18,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/auth-context";
-import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -25,8 +27,9 @@ const formSchema = z.object({
 });
 
 export function LoginForm() {
-  const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,15 +40,25 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Placeholder for actual login logic
-    console.log("Login attempt with:", values);
     setError(null);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // On successful login:
-    login("fake-auth-token"); 
-    // On error:
-    // setError("Invalid email or password.");
+    setIsSubmitting(true);
+    try {
+      await signInWithEmailAndPassword(auth, values.email, values.password);
+      // AuthContext useEffect will handle redirection
+      toast({ title: "Login Successful", description: "Welcome back!" });
+    } catch (e: any) {
+      console.error("Login error:", e);
+      let errorMessage = "Failed to login. Please check your credentials.";
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid email or password.";
+      } else if (e.code === 'auth/invalid-email') {
+        errorMessage = "Please enter a valid email address.";
+      }
+      setError(errorMessage);
+      toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -58,7 +71,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="you@example.com" {...field} />
+                <Input type="email" placeholder="you@example.com" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -71,17 +84,19 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-        <p className="text-xs text-muted-foreground">
-          For this prototype, you can use any valid email and a password (min. 6 characters) to log in.
-        </p>
-        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+        <Button 
+            type="submit" 
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            disabled={isSubmitting}
+        >
+          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Login
         </Button>
         <p className="text-center text-sm text-muted-foreground">

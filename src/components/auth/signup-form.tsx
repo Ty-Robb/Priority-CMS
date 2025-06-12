@@ -5,7 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import Link from 'next/link';
-
+import { useState } from "react";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -16,9 +18,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/auth-context";
-import { useState } from "react";
-import { Loader2 } from "lucide-react"; // Added loader icon
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -27,9 +28,9 @@ const formSchema = z.object({
 });
 
 export function SignupForm() {
-  const { login } = useAuth(); // Use login to set auth state after signup
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Added for loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -43,24 +44,29 @@ export function SignupForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setError(null);
     setIsSubmitting(true);
-    console.log("Signup attempt with:", values);
-
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // On successful signup:
-      login("fake-auth-token"); // Log the user in. AuthContext useEffect will handle redirection.
-    } catch (e) {
-      console.error("Signup process failed:", e);
-      setError("Could not create account. Please try again.");
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      if (userCredential.user) {
+        await updateProfile(userCredential.user, {
+          displayName: values.name,
+        });
+      }
+      // AuthContext useEffect will handle redirection
+      toast({ title: "Account Created!", description: "Welcome to VertexCMS!" });
+    } catch (e: any) {
+      console.error("Signup error:", e);
+      let errorMessage = "Could not create account. Please try again.";
+      if (e.code === 'auth/email-already-in-use') {
+        errorMessage = "This email address is already in use.";
+      } else if (e.code === 'auth/invalid-email') {
+        errorMessage = "Please enter a valid email address.";
+      } else if (e.code === 'auth/weak-password') {
+        errorMessage = "Password is too weak. It should be at least 6 characters.";
+      }
+      setError(errorMessage);
+      toast({ title: "Signup Failed", description: errorMessage, variant: "destructive" });
     } finally {
-      // Ensure the submitting state is reset even if navigation is slow or fails,
-      // or if login itself had an issue not caught above (though login now has its own try-catch).
-      // This makes the form usable again.
-      // A slight delay might be good if navigation is typically fast, to avoid UI flicker.
-      // However, for robustness, resetting it here is safer if navigation isn't guaranteed to unmount.
-      setIsSubmitting(false); 
+      setIsSubmitting(false);
     }
   }
 
@@ -107,9 +113,6 @@ export function SignupForm() {
           )}
         />
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-        <p className="text-xs text-muted-foreground">
-          For this prototype, any valid name, email, and password (min. 6 characters) will simulate a successful signup and log you in.
-        </p>
         <Button 
           type="submit" 
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -128,4 +131,3 @@ export function SignupForm() {
     </Form>
   );
 }
-
