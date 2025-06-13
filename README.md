@@ -1,8 +1,8 @@
-# VertexCMS (Priority CMS)
+# Priority CMS
 
-VertexCMS is a modern content management system built with Next.js, Tailwind CSS, and Firebase, enhanced with AI capabilities powered by Google's Gemini model. It provides a powerful yet intuitive interface for creating, managing, and publishing digital content.
+Priority CMS is a modern content management system built with Next.js, Tailwind CSS, and Firebase, enhanced with AI capabilities powered by Google's Gemini model. It provides a powerful yet intuitive interface for creating, managing, and publishing digital content.
 
-![VertexCMS Logo](https://placehold.co/600x200.png?text=VertexCMS)
+![Priority CMS Logo](https://placehold.co/600x200.png?text=Priority+CMS)
 
 ## Features
 
@@ -93,7 +93,7 @@ VertexCMS is a modern content management system built with Next.js, Tailwind CSS
 
 ## AI Features
 
-VertexCMS integrates with Google's Gemini AI model to provide several AI-powered features:
+Priority CMS integrates with Google's Gemini AI model to provide several AI-powered features:
 
 - **Headline Generation:** Generate compelling headline options for your content.
 - **Keyword Suggestions:** Get AI-driven keyword recommendations to optimize your content for search engines.
