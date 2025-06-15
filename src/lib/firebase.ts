@@ -2,7 +2,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
-// import { getFirestore, type Firestore } from "firebase/firestore"; // If you use Firestore later
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 // Debug: Log environment variables
 console.log("Firebase Environment Variables:");
@@ -27,7 +27,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let storage: FirebaseStorage;
-// let db: Firestore; // If you use Firestore later
+let db: Firestore;
 
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
@@ -37,6 +37,6 @@ if (getApps().length === 0) {
 
 auth = getAuth(app);
 storage = getStorage(app);
-// db = getFirestore(app); // If you use Firestore later
+db = getFirestore(app);
 
-export { app, auth, storage /*, db */ };
+export { app, auth, storage, db };
