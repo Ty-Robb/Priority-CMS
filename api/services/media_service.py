@@ -27,8 +27,25 @@ class MediaService:
             logger.info(f"Media service initialized in development mode with local storage at {self._local_storage_dir}")
         else:
             # In production mode, use Firebase Storage
-            self.bucket = storage.bucket(self.bucket_name)
-            logger.info(f"Media service initialized with Firebase Storage bucket: {self.bucket_name}")
+            if not self.bucket_name:
+                logger.warning("Storage bucket name not specified. Using development mode.")
+                self.dev_mode = True
+                self._mock_data: Dict[str, dict] = {}
+                self._local_storage_dir = os.path.join(os.getcwd(), 'media')
+                os.makedirs(self._local_storage_dir, exist_ok=True)
+                logger.info(f"Media service initialized in development mode with local storage at {self._local_storage_dir}")
+            else:
+                try:
+                    self.bucket = storage.bucket(self.bucket_name)
+                    logger.info(f"Media service initialized with Firebase Storage bucket: {self.bucket_name}")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Firebase Storage: {str(e)}")
+                    logger.warning("Falling back to development mode")
+                    self.dev_mode = True
+                    self._mock_data: Dict[str, dict] = {}
+                    self._local_storage_dir = os.path.join(os.getcwd(), 'media')
+                    os.makedirs(self._local_storage_dir, exist_ok=True)
+                    logger.info(f"Media service initialized in development mode with local storage at {self._local_storage_dir}")
         
         # Initialize Firestore collection for media metadata
         self.db = firestore_db
