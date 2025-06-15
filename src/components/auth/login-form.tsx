@@ -48,12 +48,23 @@ export function LoginForm() {
       toast({ title: "Login Successful", description: "Welcome back!" });
     } catch (e: any) {
       console.error("Login error:", e);
+      console.error("Error code:", e.code);
+      console.error("Error message:", e.message);
+      console.error("Full error object:", JSON.stringify(e, null, 2));
+      
       let errorMessage = "Failed to login. Please check your credentials.";
       if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
         errorMessage = "Invalid email or password.";
       } else if (e.code === 'auth/invalid-email') {
         errorMessage = "Please enter a valid email address.";
+      } else if (e.code === 'auth/network-request-failed') {
+        errorMessage = "Network error. Please check your connection.";
+      } else if (e.code === 'auth/too-many-requests') {
+        errorMessage = "Too many failed login attempts. Please try again later.";
+      } else if (e.code === 'auth/app-not-authorized') {
+        errorMessage = "This app is not authorized to use Firebase Authentication.";
       }
+      
       setError(errorMessage);
       toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
     } finally {
