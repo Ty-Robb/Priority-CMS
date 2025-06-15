@@ -126,7 +126,7 @@ export function MediaGallery() {
 
   const handleDelete = async (fileName: string) => {
     if (!storage || !user) return;
-    if (!window.confirm(\`Are you sure you want to delete ${fileName}?\`)) return;
+    if (!window.confirm(`Are you sure you want to delete ${fileName}?`)) return;
 
     const storagePath = getStoragePath();
     const fileRef = ref(storage, `${storagePath}/${fileName}`);
