@@ -5,7 +5,7 @@ from firebase_admin import credentials
 import os
 
 # Import routers
-from routers import content
+from routers import content, media
 # from routers import templates, auth (to be implemented)
 
 # Initialize FastAPI app
@@ -32,6 +32,7 @@ app.add_middleware(
 # Include routers
 # app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(content.router, prefix="/api/content", tags=["Content"])
+app.include_router(media.router, prefix="/api/media", tags=["Media"])
 # app.include_router(templates.router, prefix="/api/templates", tags=["Templates"])
 
 @app.get("/")

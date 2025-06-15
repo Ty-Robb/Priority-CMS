@@ -8,6 +8,7 @@ class User(BaseModel):
     email: EmailStr
     display_name: Optional[str] = None
     photo_url: Optional[str] = None
+    role: Optional[str] = "user"  # Default role is "user"
     
 class UserCreate(BaseModel):
     """Model for creating a new user"""
@@ -26,6 +27,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     display_name: Optional[str] = None
     photo_url: Optional[str] = None
+    role: Optional[str] = "user"  # Default role is "user"
     created_at: Optional[datetime] = None
     
     class Config:
