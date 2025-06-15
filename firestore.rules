@@ -1,0 +1,117 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isEditor() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'editor' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+    
+    function isOwner(resource) {
+      return isAuthenticated() && resource.data.createdBy == request.auth.uid;
+    }
+    
+    function hasValidContentFields(content) {
+      return content.size() > 0 &&
+        'title' in content && content.title is string && content.title.size() > 0 &&
+        'body' in content && content.body is string &&
+        'contentType' in content && content.contentType is string &&
+        'status' in content && content.status is string &&
+        (content.status == 'Draft' || content.status == 'Published' || content.status == 'Archived') &&
+        (!('keywords' in content) || content.keywords is list) &&
+        (!('generatedHeadlines' in content) || content.generatedHeadlines is list);
+    }
+    
+    function hasValidTimestamps(content) {
+      return 'createdAt' in content && content.createdAt is timestamp &&
+        'updatedAt' in content && content.updatedAt is timestamp;
+    }
+    
+    function hasValidUserFields(content) {
+      return 'createdBy' in content && content.createdBy is string &&
+        'updatedBy' in content && content.updatedBy is string;
+    }
+    
+    // Content collection rules
+    match /content/{contentId} {
+      // Anyone can read published content
+      allow read: if resource.data.status == 'Published' || isAuthenticated();
+      
+      // Only authenticated users can create content
+      allow create: if isAuthenticated() && 
+        hasValidContentFields(request.resource.data) &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.updatedBy == request.auth.uid;
+      
+      // Only content owners, editors, and admins can update content
+      allow update: if (isOwner(resource) || isEditor()) &&
+        hasValidContentFields(request.resource.data) &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.updatedBy == request.auth.uid;
+      
+      // Only content owners, editors, and admins can delete content
+      allow delete: if isOwner(resource) || isEditor();
+    }
+    
+    // User collection rules
+    match /users/{userId} {
+      // Users can read their own profile, admins can read all profiles
+      allow read: if request.auth.uid == userId || isAdmin();
+      
+      // Users can create their own profile
+      allow create: if request.auth.uid == userId &&
+        request.resource.data.email == request.auth.token.email;
+      
+      // Users can update their own profile, admins can update any profile
+      allow update: if request.auth.uid == userId || isAdmin();
+      
+      // Only admins can delete user profiles
+      allow delete: if isAdmin();
+    }
+    
+    // Template collection rules
+    match /templates/{templateId} {
+      // Anyone can read templates
+      allow read: if true;
+      
+      // Only editors and admins can create templates
+      allow create: if isEditor() &&
+        request.resource.data.createdBy == request.auth.uid;
+      
+      // Only editors and admins can update templates
+      allow update: if isEditor() &&
+        request.resource.data.updatedBy == request.auth.uid;
+      
+      // Only admins can delete templates
+      allow delete: if isAdmin();
+    }
+    
+    // Media collection rules
+    match /media/{mediaId} {
+      // Anyone can read media
+      allow read: if true;
+      
+      // Only authenticated users can upload media
+      allow create: if isAuthenticated() &&
+        request.resource.data.createdBy == request.auth.uid;
+      
+      // Only media owners, editors, and admins can update media
+      allow update: if isOwner(resource) || isEditor();
+      
+      // Only media owners, editors, and admins can delete media
+      allow delete: if isOwner(resource) || isEditor();
+    }
+  }
+}
