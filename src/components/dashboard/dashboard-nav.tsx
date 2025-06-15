@@ -9,7 +9,8 @@ import {
   FileText,
   Image as ImageIcon,
   Settings,
-  ListOrdered, // New Icon
+  ListOrdered,
+  LayoutTemplate, // Template Icon
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/content-studio", label: "Content Studio", icon: FileText },
   { href: "/dashboard/content-management", label: "Content List", icon: ListOrdered },
+  { href: "/dashboard/templates", label: "Templates", icon: LayoutTemplate },
   { href: "/dashboard/media", label: "Media Library", icon: ImageIcon },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
@@ -47,4 +49,3 @@ export function DashboardNav() {
     </SidebarMenu>
   );
 }
-
