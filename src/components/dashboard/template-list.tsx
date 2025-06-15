@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Pagination } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
+import { TemplateRenderer } from '@/components/template-renderer';
 
 // Template types
 type TemplateStatus = 'Draft' | 'Published' | 'Archived';
@@ -77,6 +78,7 @@ export default function TemplateList({ initialTemplates = [] }: TemplateListProp
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('all');
+  const [showShadcnOnly, setShowShadcnOnly] = useState<boolean>(false);
   const [pagination, setPagination] = useState<PaginationMeta>({
     page: 1,
     page_size: 10,
@@ -239,14 +241,23 @@ export default function TemplateList({ initialTemplates = [] }: TemplateListProp
       )}
 
       <Tabs defaultValue="all" onValueChange={handleTabChange}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="Published">Published</TabsTrigger>
-          <TabsTrigger value="Draft">Draft</TabsTrigger>
-          <TabsTrigger value="Archived">Archived</TabsTrigger>
-          <TabsTrigger value="Page">Pages</TabsTrigger>
-          <TabsTrigger value="Component">Components</TabsTrigger>
-        </TabsList>
+        <div className="flex justify-between items-center mb-4">
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="Published">Published</TabsTrigger>
+            <TabsTrigger value="Draft">Draft</TabsTrigger>
+            <TabsTrigger value="Archived">Archived</TabsTrigger>
+            <TabsTrigger value="Page">Pages</TabsTrigger>
+            <TabsTrigger value="Component">Components</TabsTrigger>
+          </TabsList>
+          
+          <Button 
+            variant={showShadcnOnly ? "default" : "outline"}
+            onClick={() => setShowShadcnOnly(!showShadcnOnly)}
+          >
+            shadcn Components
+          </Button>
+        </div>
 
         <TabsContent value="all" className="space-y-4">
           {loading ? (
@@ -258,7 +269,9 @@ export default function TemplateList({ initialTemplates = [] }: TemplateListProp
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {templates.map((template) => (
+              {templates
+                .filter(template => !showShadcnOnly || template.tags?.includes('shadcn'))
+                .map((template) => (
                 <Card key={template.id} className="overflow-hidden">
                   {template.thumbnail_url && (
                     <div className="h-40 overflow-hidden">
@@ -324,7 +337,9 @@ export default function TemplateList({ initialTemplates = [] }: TemplateListProp
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {templates.map((template) => (
+                {templates
+                  .filter(template => !showShadcnOnly || template.tags?.includes('shadcn'))
+                  .map((template) => (
                   <Card key={template.id} className="overflow-hidden">
                     {/* Same card content as in "all" tab */}
                     {template.thumbnail_url && (
