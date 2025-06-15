@@ -119,7 +119,7 @@ Priority CMS is designed to work seamlessly with Priority AI, our AI-guided mark
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please see our [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on how to contribute to this project, including our Git workflow and instructions for getting updates from the main branch.
 
 ## License
 
