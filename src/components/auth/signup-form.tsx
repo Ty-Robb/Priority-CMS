@@ -55,6 +55,10 @@ export function SignupForm() {
       toast({ title: "Account Created!", description: "Welcome to VertexCMS!" });
     } catch (e: any) {
       console.error("Signup error:", e);
+      console.error("Error code:", e.code);
+      console.error("Error message:", e.message);
+      console.error("Full error object:", JSON.stringify(e, null, 2));
+      
       let errorMessage = "Could not create account. Please try again.";
       if (e.code === 'auth/email-already-in-use') {
         errorMessage = "This email address is already in use.";
@@ -62,7 +66,14 @@ export function SignupForm() {
         errorMessage = "Please enter a valid email address.";
       } else if (e.code === 'auth/weak-password') {
         errorMessage = "Password is too weak. It should be at least 6 characters.";
+      } else if (e.code === 'auth/network-request-failed') {
+        errorMessage = "Network error. Please check your connection.";
+      } else if (e.code === 'auth/operation-not-allowed') {
+        errorMessage = "Email/password accounts are not enabled. Please contact support.";
+      } else if (e.code === 'auth/app-not-authorized') {
+        errorMessage = "This app is not authorized to use Firebase Authentication.";
       }
+      
       setError(errorMessage);
       toast({ title: "Signup Failed", description: errorMessage, variant: "destructive" });
     } finally {

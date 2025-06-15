@@ -17,7 +17,7 @@ import { generatePageContent } from "@/ai/flows/generate-page-content"; // Impor
 import { Sparkles, Tags, CheckCircle, Loader2, Save, Brain } from "lucide-react"; // Added Brain icon
 import { useToast } from "@/hooks/use-toast";
 import type { ContentPiece } from "@/types";
-import { mockContentData } from '@/lib/mock-data';
+import { createContent, updateContent, getContentById } from '@/lib/firestore';
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -146,52 +146,64 @@ export function ContentForm({ initialContent, onFormSaved }: ContentFormProps) {
     }
   };
 
-  const onSubmit: SubmitHandler<ContentFormData> = (data) => {
+  const onSubmit: SubmitHandler<ContentFormData> = async (data) => {
     setIsSubmitting(true);
     let savedContentPiece: ContentPiece;
 
-    if (initialContent) {
-      const index = mockContentData.findIndex(item => item.id === initialContent.id);
-      if (index !== -1) {
-        mockContentData[index] = {
-          ...mockContentData[index],
+    try {
+      if (initialContent) {
+        // Update existing content
+        await updateContent(initialContent.id, {
           ...data,
           keywords: suggestedKeywords,
           generatedHeadlines: generatedHeadlines,
-          updatedAt: new Date().toISOString(),
-           // Ensure pageStructure is preserved if it exists, or stays undefined
-          pageStructure: mockContentData[index].pageStructure,
-        };
-        savedContentPiece = mockContentData[index];
-        toast({ title: "Content Updated!", description: "Your changes have been saved.", icon: <CheckCircle className="h-5 w-5 text-green-500" /> });
+        });
+        
+        // Get the updated content
+        const updated = await getContentById(initialContent.id);
+        if (!updated) {
+          throw new Error("Failed to retrieve updated content");
+        }
+        
+        savedContentPiece = updated;
+        toast({ 
+          title: "Content Updated!", 
+          description: "Your changes have been saved."
+        });
       } else {
-        toast({ title: "Error", description: "Could not find content to update.", variant: "destructive" });
-        setIsSubmitting(false);
-        return;
+        // Create new content
+        const newContent: Omit<ContentPiece, 'id'> = {
+          ...data,
+          status: 'Draft',
+          contentType: 'Form Edited Post',
+          keywords: suggestedKeywords,
+          generatedHeadlines: generatedHeadlines,
+          createdAt: new Date().toISOString(), // Will be overwritten by serverTimestamp()
+          updatedAt: new Date().toISOString(), // Will be overwritten by serverTimestamp()
+          pageStructure: undefined,
+        };
+        
+        savedContentPiece = await createContent(newContent);
+        toast({ 
+          title: "Content Saved!", 
+          description: "Your new content piece is saved."
+        });
+        router.push(`/dashboard/content-studio?editId=${savedContentPiece.id}`);
       }
-    } else {
-      const newId = String(Date.now() + Math.random());
-      const newContent: ContentPiece = {
-        id: newId,
-        ...data,
-        status: 'Draft',
-        contentType: 'Form Edited Post',
-        keywords: suggestedKeywords,
-        generatedHeadlines: generatedHeadlines,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        pageStructure: undefined,
-      };
-      mockContentData.push(newContent);
-      savedContentPiece = newContent;
-      toast({ title: "Content Saved!", description: "Your new content piece is saved.", icon: <CheckCircle className="h-5 w-5 text-green-500" /> });
-      router.push(`/dashboard/content-studio?editId=${newId}`);
-    }
-    
-    if (onFormSaved && savedContentPiece) {
+      
+      if (onFormSaved && savedContentPiece) {
         onFormSaved(savedContentPiece);
+      }
+    } catch (error) {
+      console.error("Error saving content:", error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to save content. Please try again.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
   
   const submitButtonText = initialContent ? "Update Content" : "Save New Content";

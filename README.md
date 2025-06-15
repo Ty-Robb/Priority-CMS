@@ -100,9 +100,26 @@ Priority CMS integrates with Google's Gemini AI model to provide several AI-powe
 - **Content Generation:** Create initial content drafts based on prompts.
 - **Natural Language Interface:** Interact with the AI assistant through a chat interface to build pages.
 
+## Project Roadmap
+
+Priority CMS is currently in active development. Check our [TODO.md](./TODO.md) for the detailed development roadmap and upcoming features.
+
+### Production Readiness
+
+We're working toward making Priority CMS production-ready with:
+- FastAPI backend implementation for content management
+- Real-time content editing with WebSockets
+- Social sharing integration with major platforms
+- Comprehensive template system
+- Integration with Priority AI for advanced content generation
+
+### Integration with Priority AI
+
+Priority CMS is designed to work seamlessly with Priority AI, our AI-guided marketing strategy platform. Content created in Priority AI can be sent to Priority CMS as drafts, and analytics from published content can inform marketing strategies.
+
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please see our [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on how to contribute to this project, including our Git workflow and instructions for getting updates from the main branch.
 
 ## License
 
