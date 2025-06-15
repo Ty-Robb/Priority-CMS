@@ -1,0 +1,97 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isEditor() {
+      return isAuthenticated() && 
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'editor' ||
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+    
+    function isOwner(path) {
+      return isAuthenticated() && 
+        firestore.exists(/databases/(default)/documents/media/$(path)) &&
+        firestore.get(/databases/(default)/documents/media/$(path)).data.createdBy == request.auth.uid;
+    }
+    
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*') &&
+        request.resource.size < 5 * 1024 * 1024; // 5MB max
+    }
+    
+    function isValidDocument() {
+      return request.resource.contentType.matches('application/pdf') ||
+        request.resource.contentType.matches('application/msword') ||
+        request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+        request.resource.contentType.matches('text/plain') ||
+        request.resource.contentType.matches('application/json') ||
+        request.resource.contentType.matches('text/markdown') &&
+        request.resource.size < 10 * 1024 * 1024; // 10MB max
+    }
+    
+    // Public media (accessible to anyone)
+    match /public/{allPaths=**} {
+      // Anyone can read public media
+      allow read: if true;
+      
+      // Only authenticated users can upload public media
+      allow write: if isAuthenticated() && 
+        (isValidImage() || isValidDocument());
+    }
+    
+    // User profile images
+    match /users/{userId}/{allPaths=**} {
+      // Anyone can read user profile images
+      allow read: if true;
+      
+      // Users can only upload their own profile images
+      allow write: if request.auth.uid == userId && 
+        isValidImage() &&
+        request.resource.size < 2 * 1024 * 1024; // 2MB max
+    }
+    
+    // Content media (images, documents, etc.)
+    match /content/{contentId}/{allPaths=**} {
+      // Anyone can read content media
+      allow read: if true;
+      
+      // Only authenticated users can upload content media
+      allow create: if isAuthenticated() && 
+        (isValidImage() || isValidDocument());
+      
+      // Only content owners, editors, and admins can update or delete content media
+      allow update, delete: if isOwner(contentId) || isEditor();
+    }
+    
+    // Template media (images, icons, etc.)
+    match /templates/{templateId}/{allPaths=**} {
+      // Anyone can read template media
+      allow read: if true;
+      
+      // Only editors and admins can upload, update, or delete template media
+      allow write: if isEditor() && 
+        isValidImage();
+    }
+    
+    // Private media (accessible only to authenticated users)
+    match /private/{userId}/{allPaths=**} {
+      // Only the owner and admins can read private media
+      allow read: if request.auth.uid == userId || isAdmin();
+      
+      // Only the owner can upload private media
+      allow write: if request.auth.uid == userId && 
+        (isValidImage() || isValidDocument());
+    }
+  }
+}
